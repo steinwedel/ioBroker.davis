@@ -3,6 +3,19 @@
         "name": "davis",
         "version": "0.0.1",
         "news": {
+            "0.0.2": {
+                "en": "mDNS discovery, configurable units (metric/imperial), rain depth conversion and new icon",
+                "de": "mDNS-Suche, einstellbare Einheiten (metrisch/imperial), Regenmengen-Umrechnung und neues Icon",
+                "ru": "Обнаружение mDNS, настраиваемые единицы измерения, пересчёт осадков и новая иконка",
+                "pt": "Descoberta mDNS, unidades configuráveis, conversão de chuva e novo ícone",
+                "nl": "mDNS-detectie, instelbare eenheden, regenomrekening en nieuw icoon",
+                "fr": "Découverte mDNS, unités configurables, conversion des précipitations et nouvelle icône",
+                "it": "Rilevamento mDNS, unità configurabili, conversione pioggia e nuova icona",
+                "es": "Descubrimiento mDNS, unidades configurables, conversión de lluvia e icono nuevo",
+                "pl": "Wykrywanie mDNS, konfigurowalne jednostki, przeliczanie opadów i nowa ikona",
+                "uk": "Виявлення mDNS, налаштовувані одиниці, перерахунок дощу та нова іконка",
+                "zh-cn": "mDNS 发现、可配置单位、降雨量转换和新图标"
+            },
             "0.0.1": {
                 "en": "initial release",
                 "de": "Erstveröffentlichung",
