@@ -4,6 +4,15 @@
 
 import * as dgram from 'node:dgram';
 import * as utils from '@iobroker/adapter-core';
+import { discoverWeatherLinkLive } from './lib/discovery';
+import {
+    convertRainCount,
+    convertValue,
+    getRainUnitLabel,
+    getUnitLabel,
+    type UnitKind,
+    type UnitSystem,
+} from './lib/units';
 import {
     DataStructureType,
     type Condition,
@@ -23,24 +32,66 @@ interface FieldDefinition<T> {
     name: string;
     type: 'number' | 'boolean';
     role: string;
+    /** Static unit label for fields that are the same in both unit systems (e.g. "%", "W/m²") */
     unit?: string;
+    /** For fields whose unit/value depends on the selected unit system (temperature, wind speed, pressure) */
+    unitKind?: UnitKind;
+    /** Marks a raw rain tip count that must be converted to mm/in using the record's `rain_size` */
+    isRain?: boolean;
+    /** For rain fields that represent a rate (counts/hour) rather than an accumulated amount */
+    isRainRate?: boolean;
     states?: Record<number, string>;
 }
 
 const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
-    { key: 'temp', id: 'temperature', name: 'Temperature', type: 'number', role: 'value.temperature', unit: '°F' },
+    {
+        key: 'temp',
+        id: 'temperature',
+        name: 'Temperature',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+    },
     { key: 'hum', id: 'humidity', name: 'Humidity', type: 'number', role: 'value.humidity', unit: '%' },
-    { key: 'dew_point', id: 'dewPoint', name: 'Dew point', type: 'number', role: 'value.temperature', unit: '°F' },
-    { key: 'wind_chill', id: 'windChill', name: 'Wind chill', type: 'number', role: 'value.temperature', unit: '°F' },
-    { key: 'heat_index', id: 'heatIndex', name: 'Heat index', type: 'number', role: 'value.temperature', unit: '°F' },
-    { key: 'thw_index', id: 'thwIndex', name: 'THW index', type: 'number', role: 'value.temperature', unit: '°F' },
+    {
+        key: 'dew_point',
+        id: 'dewPoint',
+        name: 'Dew point',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+    },
+    {
+        key: 'wind_chill',
+        id: 'windChill',
+        name: 'Wind chill',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+    },
+    {
+        key: 'heat_index',
+        id: 'heatIndex',
+        name: 'Heat index',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+    },
+    {
+        key: 'thw_index',
+        id: 'thwIndex',
+        name: 'THW index',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+    },
     {
         key: 'thsw_index',
         id: 'thswIndex',
         name: 'THSW index',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'wind_speed_last',
@@ -48,7 +99,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Wind speed (last)',
         type: 'number',
         role: 'value.speed.wind',
-        unit: 'mph',
+        unitKind: 'windSpeed',
     },
     {
         key: 'wind_dir_last',
@@ -64,7 +115,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Wind speed avg (10 min)',
         type: 'number',
         role: 'value.speed.wind',
-        unit: 'mph',
+        unitKind: 'windSpeed',
     },
     {
         key: 'wind_speed_hi_last_10_min',
@@ -72,7 +123,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Wind gust (10 min)',
         type: 'number',
         role: 'value.speed.wind.max',
-        unit: 'mph',
+        unitKind: 'windSpeed',
     },
     {
         key: 'rain_rate_last',
@@ -80,7 +131,8 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Rain rate',
         type: 'number',
         role: 'value.precipitation',
-        unit: 'counts/h',
+        isRain: true,
+        isRainRate: true,
     },
     {
         key: 'rainfall_last_15_min',
@@ -88,7 +140,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Rainfall (last 15 min)',
         type: 'number',
         role: 'value.precipitation',
-        unit: 'counts',
+        isRain: true,
     },
     {
         key: 'rainfall_daily',
@@ -96,7 +148,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Rainfall today',
         type: 'number',
         role: 'value.rain.today',
-        unit: 'counts',
+        isRain: true,
     },
     {
         key: 'rainfall_monthly',
@@ -104,7 +156,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Rainfall this month',
         type: 'number',
         role: 'value.precipitation',
-        unit: 'counts',
+        isRain: true,
     },
     {
         key: 'rainfall_year',
@@ -112,7 +164,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Rainfall this year',
         type: 'number',
         role: 'value.precipitation',
-        unit: 'counts',
+        isRain: true,
     },
     {
         key: 'rain_storm',
@@ -120,7 +172,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         name: 'Current rain storm total',
         type: 'number',
         role: 'value.precipitation',
-        unit: 'counts',
+        isRain: true,
     },
     { key: 'solar_rad', id: 'solarRad', name: 'Solar radiation', type: 'number', role: 'value', unit: 'W/m²' },
     { key: 'uv_index', id: 'uvIndex', name: 'UV index', type: 'number', role: 'value', unit: 'Index' },
@@ -148,7 +200,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         name: 'Soil temperature 1',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'temp_2',
@@ -156,7 +208,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         name: 'Soil temperature 2',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'temp_3',
@@ -164,7 +216,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         name: 'Soil temperature 3',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'temp_4',
@@ -172,7 +224,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         name: 'Soil temperature 4',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'moist_soil_1',
@@ -224,7 +276,7 @@ const BAR_FIELDS: FieldDefinition<LssBarCondition>[] = [
         name: 'Barometer (sea level)',
         type: 'number',
         role: 'value.pressure',
-        unit: 'inHg',
+        unitKind: 'pressure',
     },
     {
         key: 'bar_absolute',
@@ -232,9 +284,16 @@ const BAR_FIELDS: FieldDefinition<LssBarCondition>[] = [
         name: 'Barometer (absolute)',
         type: 'number',
         role: 'value.pressure',
-        unit: 'inHg',
+        unitKind: 'pressure',
     },
-    { key: 'bar_trend', id: 'trend', name: 'Barometer trend (3h)', type: 'number', role: 'value.pressure' },
+    {
+        key: 'bar_trend',
+        id: 'trend',
+        name: 'Barometer trend (3h)',
+        type: 'number',
+        role: 'value.pressure',
+        unitKind: 'pressure',
+    },
 ];
 
 const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
@@ -244,7 +303,7 @@ const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
         name: 'Inside temperature',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     { key: 'hum_in', id: 'humidity', name: 'Inside humidity', type: 'number', role: 'value.humidity', unit: '%' },
     {
@@ -253,7 +312,7 @@ const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
         name: 'Inside dew point',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
     {
         key: 'heat_index_in',
@@ -261,20 +320,21 @@ const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
         name: 'Inside heat index',
         type: 'number',
         role: 'value.temperature',
-        unit: '°F',
+        unitKind: 'temperature',
     },
 ];
 
 /** Fields that are updated by the real-time UDP broadcast (subset of ISS fields) */
-const REALTIME_ISS_FIELDS: { key: string; id: string }[] = [
-    { key: 'wind_speed_last', id: 'windSpeedLast' },
-    { key: 'wind_dir_last', id: 'windDirLast' },
-    { key: 'rain_rate_last', id: 'rainRateLast' },
-    { key: 'rainfall_daily', id: 'rainfallDaily' },
-    { key: 'rainfall_monthly', id: 'rainfallMonthly' },
-    { key: 'rainfall_year', id: 'rainfallYear' },
-    { key: 'wind_speed_hi_last_10_min', id: 'windSpeedHi10Min' },
-];
+const REALTIME_ISS_FIELDS: { key: string; id: string; unitKind?: UnitKind; isRain?: boolean; isRainRate?: boolean }[] =
+    [
+        { key: 'wind_speed_last', id: 'windSpeedLast', unitKind: 'windSpeed' },
+        { key: 'wind_dir_last', id: 'windDirLast' },
+        { key: 'rain_rate_last', id: 'rainRateLast', isRain: true, isRainRate: true },
+        { key: 'rainfall_daily', id: 'rainfallDaily', isRain: true },
+        { key: 'rainfall_monthly', id: 'rainfallMonthly', isRain: true },
+        { key: 'rainfall_year', id: 'rainfallYear', isRain: true },
+        { key: 'wind_speed_hi_last_10_min', id: 'windSpeedHi10Min', unitKind: 'windSpeed' },
+    ];
 
 const HTTP_TIMEOUT_MS = 8000;
 const REALTIME_UDP_PORT = 22222;
@@ -303,6 +363,7 @@ class Davis extends utils.Adapter {
     private readonly knownChannels = new Set<string>();
     private readonly knownStates = new Set<string>();
     private isConnected = false;
+    private units: UnitSystem = 'imperial';
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -311,9 +372,12 @@ class Davis extends utils.Adapter {
         });
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
+        this.on('message', this.onMessage.bind(this));
     }
 
     private async onReady(): Promise<void> {
+        this.units = this.config.units === 'metric' ? 'metric' : 'imperial';
+
         await this.setObjectNotExistsAsync('info', {
             type: 'channel',
             common: { name: 'Information' },
@@ -484,6 +548,11 @@ class Davis extends utils.Adapter {
             }
             const value = record[field.key] as unknown as number | boolean | null | undefined;
             const stateId = `${channelId}.${field.id}`;
+            const unit = field.isRain
+                ? getRainUnitLabel(this.units, field.isRainRate)
+                : field.unitKind
+                  ? getUnitLabel(field.unitKind, this.units)
+                  : field.unit;
 
             if (!this.knownStates.has(stateId)) {
                 await this.setObjectNotExistsAsync(stateId, {
@@ -492,13 +561,16 @@ class Davis extends utils.Adapter {
                         name: field.name,
                         type: field.type,
                         role: field.role,
-                        unit: field.unit,
+                        unit,
                         states: field.states,
                         read: true,
                         write: false,
                     },
                     native: {},
                 });
+                // Keep the unit in sync with the current setting even if the object already
+                // existed from a previous run with a different unit system selected.
+                await this.extendObjectAsync(stateId, { common: { unit } });
                 this.knownStates.add(stateId);
             }
 
@@ -507,7 +579,18 @@ class Davis extends utils.Adapter {
                 continue;
             }
 
-            const val = field.type === 'boolean' ? Boolean(value) : Number(value);
+            const val =
+                field.type === 'boolean'
+                    ? Boolean(value)
+                    : field.isRain
+                      ? convertRainCount(
+                            Number(value),
+                            (record as unknown as { rain_size?: number | null }).rain_size,
+                            this.units,
+                        )
+                      : field.unitKind
+                        ? convertValue(Number(value), field.unitKind, this.units)
+                        : Number(value);
             await this.setStateAsync(stateId, { val, ack: true });
         }
     }
@@ -618,11 +701,55 @@ class Davis extends utils.Adapter {
                 if (value === null || value === undefined) {
                     continue;
                 }
-                this.setStateAsync(`${channelId}.${field.id}`, { val: Number(value), ack: true }).catch(
-                    (error: Error) => {
-                        this.log.debug(`Could not update ${channelId}.${field.id}: ${error.message}`);
+                const val = field.isRain
+                    ? convertRainCount(Number(value), record.rain_size, this.units)
+                    : field.unitKind
+                      ? convertValue(Number(value), field.unitKind, this.units)
+                      : Number(value);
+                this.setStateAsync(`${channelId}.${field.id}`, { val, ack: true }).catch((error: Error) => {
+                    this.log.debug(`Could not update ${channelId}.${field.id}: ${error.message}`);
+                });
+            }
+        }
+    }
+
+    /**
+     * Handles messages sent to this adapter instance, currently only the
+     * "discoverWLL" command used by the "Find WeatherLink Live" button in the admin UI.
+     *
+     * @param obj - The incoming ioBroker message object
+     */
+    private async onMessage(obj: ioBroker.Message): Promise<void> {
+        if (!obj || typeof obj !== 'object' || !obj.command) {
+            return;
+        }
+
+        if (obj.command === 'discoverWLL') {
+            if (!obj.callback) {
+                return;
+            }
+            try {
+                const devices = await discoverWeatherLinkLive();
+                if (devices.length === 0) {
+                    this.sendTo(obj.from, obj.command, { error: 'notFound' }, obj.callback);
+                    return;
+                }
+                // Use the first device found; most home networks only have a single WeatherLink Live.
+                const device = devices[0];
+                this.log.info(`Discovered WeatherLink Live at ${device.address}:${device.port} (${device.name})`);
+                this.sendTo(
+                    obj.from,
+                    obj.command,
+                    {
+                        native: { host: device.address, port: device.port },
+                        result: 'found',
+                        args: [device.address],
                     },
+                    obj.callback,
                 );
+            } catch (error) {
+                this.log.error(`WeatherLink Live discovery failed: ${(error as Error).message}`);
+                this.sendTo(obj.from, obj.command, { error: 'discoveryFailed' }, obj.callback);
             }
         }
     }

@@ -127,6 +127,7 @@ export interface RealtimeIssRecord {
     txid?: number;
     wind_speed_last?: number | null;
     wind_dir_last?: number | null;
+    rain_size?: number | null;
     rain_rate_last?: number | null;
     rainfall_daily?: number | null;
     rainfall_monthly?: number | null;
