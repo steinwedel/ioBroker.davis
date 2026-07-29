@@ -117,8 +117,7 @@ For later updates:
 1. Repeat the installation steps above (via Admin UI or `iob url` command) to update the adapter
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 0.0.2 (2026-07-29)
 * (steinwedel) **NEW**: Initial implementation using the WeatherLink Live Local API (`/v1/current_conditions` polling) with dynamic object creation adapting to the transmitters/sensors actually configured on the station
 * (steinwedel) **NEW**: Real-time mode via `/v1/real_time` UDP broadcast (port 22222) for high-frequency wind/rain updates
 * (steinwedel) **NEW**: "Find WeatherLink Live" button in the admin UI that discovers the device via mDNS/Bonjour (`_weatherlinklive._tcp.local`) and automatically fills in its IP address and port

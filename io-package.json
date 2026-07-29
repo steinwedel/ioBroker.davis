@@ -1,108 +1,108 @@
 {
-    "common": {
-        "name": "davis",
-        "version": "0.0.1",
-        "news": {
-            "0.0.2": {
-                "en": "mDNS discovery, configurable units (metric/imperial), rain depth conversion and new icon",
-                "de": "mDNS-Suche, einstellbare Einheiten (metrisch/imperial), Regenmengen-Umrechnung und neues Icon",
-                "ru": "Обнаружение mDNS, настраиваемые единицы измерения, пересчёт осадков и новая иконка",
-                "pt": "Descoberta mDNS, unidades configuráveis, conversão de chuva e novo ícone",
-                "nl": "mDNS-detectie, instelbare eenheden, regenomrekening en nieuw icoon",
-                "fr": "Découverte mDNS, unités configurables, conversion des précipitations et nouvelle icône",
-                "it": "Rilevamento mDNS, unità configurabili, conversione pioggia e nuova icona",
-                "es": "Descubrimiento mDNS, unidades configurables, conversión de lluvia e icono nuevo",
-                "pl": "Wykrywanie mDNS, konfigurowalne jednostki, przeliczanie opadów i nowa ikona",
-                "uk": "Виявлення mDNS, налаштовувані одиниці, перерахунок дощу та нова іконка",
-                "zh-cn": "mDNS 发现、可配置单位、降雨量转换和新图标"
-            },
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "uk": "Початкова версія",
-                "zh-cn": "首次出版"
-            }
-        },
-        "titleLang": {
-            "en": "Davis WeatherLink Live",
-            "de": "Davis WeatherLink Live",
-            "ru": "Дэвис WeatherLink Live",
-            "pt": "Davis WeatherLink ao vivo",
-            "nl": "Davis WeerLink Live",
-            "fr": "Davis WeatherLink en direct",
-            "it": "Davis WeatherLink in diretta",
-            "es": "Davis WeatherLink en vivo",
-            "pl": "Davis WeatherLink na żywo",
-            "uk": "Davis WeatherLink Live",
-            "zh-cn": "戴维斯 WeatherLink 直播"
-        },
-        "desc": {
-            "en": "Adapter for Davis WeatherLink Live weather stations (local API)",
-            "de": "Adapter für Davis WeatherLink Live-Wetterstationen (lokale API)",
-            "ru": "Адаптер для метеостанций Davis WeatherLink Live (локальный API)",
-            "pt": "Adaptador para estações meteorológicas Davis WeatherLink Live (API local)",
-            "nl": "Adapter voor Davis WeatherLink Live weerstations (lokale API)",
-            "fr": "Adaptateur pour stations météo Davis WeatherLink Live (API locale)",
-            "it": "Adattatore per stazioni meteo Davis WeatherLink Live (API locale)",
-            "es": "Adaptador para estaciones meteorológicas Davis WeatherLink Live (API local)",
-            "pl": "Adapter do stacji pogodowych Davis WeatherLink Live (lokalne API)",
-            "uk": "Адаптер для метеостанцій Davis WeatherLink Live (локальний API)",
-            "zh-cn": "Davis WeatherLink 实时气象站适配器（本地 API）"
-        },
-        "authors": [
-            "steinwedel <steinwedel@example.com>"
-        ],
-        "keywords": [
-            "davis",
-            "weather",
-            "weatherlink"
-        ],
-        "licenseInformation": {
-            "type": "free",
-            "license": "MIT"
-        },
-        "platform": "Javascript/Node.js",
-        "icon": "davis.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/steinwedel/ioBroker.davis/main/admin/davis.png",
-        "readme": "https://github.com/steinwedel/ioBroker.davis/blob/main/README.md",
-        "loglevel": "info",
-        "tier": 3,
-        "mode": "daemon",
-        "type": "weather",
-        "compact": true,
-        "connectionType": "local",
-        "dataSource": "poll",
-        "messagebox": true,
-        "adminUI": {
-            "config": "json"
-        },
-        "dependencies": [
-            {
-                "js-controller": ">=6.0.11"
-            }
-        ],
-        "globalDependencies": [
-            {
-                "admin": ">=7.0.23"
-            }
-        ]
+  "common": {
+    "name": "davis",
+    "version": "0.0.2",
+    "news": {
+      "0.0.2": {
+        "en": "mDNS discovery, configurable units (metric/imperial), rain depth conversion and new icon",
+        "de": "mDNS-Suche, einstellbare Einheiten (metrisch/imperial), Regenmengen-Umrechnung und neues Icon",
+        "ru": "Обнаружение mDNS, настраиваемые единицы измерения, пересчёт осадков и новая иконка",
+        "pt": "Descoberta mDNS, unidades configuráveis, conversão de chuva e novo ícone",
+        "nl": "mDNS-detectie, instelbare eenheden, regenomrekening en nieuw icoon",
+        "fr": "Découverte mDNS, unités configurables, conversion des précipitations et nouvelle icône",
+        "it": "Rilevamento mDNS, unità configurabili, conversione pioggia e nuova icona",
+        "es": "Descubrimiento mDNS, unidades configurables, conversión de lluvia e icono nuevo",
+        "pl": "Wykrywanie mDNS, konfigurowalne jednostki, przeliczanie opadów i nowa ikona",
+        "uk": "Виявлення mDNS, налаштовувані одиниці, перерахунок дощу та нова іконка",
+        "zh-cn": "mDNS 发现、可配置单位、降雨量转换和新图标"
+      },
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
     },
-    "native": {
-        "host": "",
-        "port": 80,
-        "pollInterval": 20,
-        "units": "metric",
-        "realtimeEnabled": false,
-        "realtimeDuration": 90
+    "titleLang": {
+      "en": "Davis WeatherLink Live",
+      "de": "Davis WeatherLink Live",
+      "ru": "Дэвис WeatherLink Live",
+      "pt": "Davis WeatherLink ao vivo",
+      "nl": "Davis WeerLink Live",
+      "fr": "Davis WeatherLink en direct",
+      "it": "Davis WeatherLink in diretta",
+      "es": "Davis WeatherLink en vivo",
+      "pl": "Davis WeatherLink na żywo",
+      "uk": "Davis WeatherLink Live",
+      "zh-cn": "戴维斯 WeatherLink 直播"
     },
-    "objects": [],
-    "instanceObjects": []
+    "desc": {
+      "en": "Adapter for Davis WeatherLink Live weather stations (local API)",
+      "de": "Adapter für Davis WeatherLink Live-Wetterstationen (lokale API)",
+      "ru": "Адаптер для метеостанций Davis WeatherLink Live (локальный API)",
+      "pt": "Adaptador para estações meteorológicas Davis WeatherLink Live (API local)",
+      "nl": "Adapter voor Davis WeatherLink Live weerstations (lokale API)",
+      "fr": "Adaptateur pour stations météo Davis WeatherLink Live (API locale)",
+      "it": "Adattatore per stazioni meteo Davis WeatherLink Live (API locale)",
+      "es": "Adaptador para estaciones meteorológicas Davis WeatherLink Live (API local)",
+      "pl": "Adapter do stacji pogodowych Davis WeatherLink Live (lokalne API)",
+      "uk": "Адаптер для метеостанцій Davis WeatherLink Live (локальний API)",
+      "zh-cn": "Davis WeatherLink 实时气象站适配器（本地 API）"
+    },
+    "authors": [
+      "steinwedel <steinwedel@example.com>"
+    ],
+    "keywords": [
+      "davis",
+      "weather",
+      "weatherlink"
+    ],
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "davis.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/steinwedel/ioBroker.davis/main/admin/davis.png",
+    "readme": "https://github.com/steinwedel/ioBroker.davis/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "weather",
+    "compact": true,
+    "connectionType": "local",
+    "dataSource": "poll",
+    "messagebox": true,
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.0.23"
+      }
+    ]
+  },
+  "native": {
+    "host": "",
+    "port": 80,
+    "pollInterval": 20,
+    "units": "metric",
+    "realtimeEnabled": false,
+    "realtimeDuration": 90
+  },
+  "objects": [],
+  "instanceObjects": []
 }
