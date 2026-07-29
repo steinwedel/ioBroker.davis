@@ -1,0 +1,49 @@
+{
+    "adapterName": "davis",
+    "title": "Davis WeatherLink Live",
+    "description": "Adapter for Davis WeatherLink Live weather stations (local API)",
+    "features": [
+        "adapter"
+    ],
+    "type": "weather",
+    "authorName": "steinwedel",
+    "authorEmail": "steinwedel@example.com",
+    "authorGithub": "steinwedel",
+    "language": "TypeScript",
+    "tools": [
+        "ESLint",
+        "type checking"
+    ],
+    "indentation": "Space (4)",
+    "quotes": "single",
+    "es-version": "ES2020",
+    "connectionType": "local",
+    "connectionIndicator": "poll",
+    "dataSource": "poll",
+    "adminUi": "JSON Config",
+    "adapterSettings": [],
+    "adminFeatures": [],
+    "cli": false,
+    "license": "MIT License",
+    "gitCommit": false,
+    "gitRemoteProtocol": "HTTPS",
+    "defaultBranch": "main",
+    "releaseScript": true,
+    "dependabot": true,
+    "devServer": true,
+    "devServerPort": 8081,
+    "startMode": "daemon",
+    "scheduleStartOnChange": false,
+    "keywords": [
+        "davis",
+        "weather",
+        "weatherlink"
+    ],
+    "contributors": [],
+    "replay": "/tmp/kilo/davis-answers.json",
+    "icon": "",
+    "expert": "",
+    "nodeVersion": "20",
+    "eslintConfig": "official",
+    "creatorVersion": "3.1.5"
+}

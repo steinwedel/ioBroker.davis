@@ -1,0 +1,656 @@
+/*
+ * Created with @iobroker/create-adapter v3.1.5
+ */
+
+import * as dgram from 'node:dgram';
+import * as utils from '@iobroker/adapter-core';
+import {
+    DataStructureType,
+    type Condition,
+    type CurrentConditionsResponse,
+    type IssCondition,
+    type LeafSoilCondition,
+    type LssBarCondition,
+    type LssTempHumCondition,
+    type RealTimeActivationResponse,
+    type RealtimeBroadcastPacket,
+} from './lib/weatherlink-types';
+
+/** Describes how a single field of a condition record maps to an ioBroker state */
+interface FieldDefinition<T> {
+    key: keyof T;
+    id: string;
+    name: string;
+    type: 'number' | 'boolean';
+    role: string;
+    unit?: string;
+    states?: Record<number, string>;
+}
+
+const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
+    { key: 'temp', id: 'temperature', name: 'Temperature', type: 'number', role: 'value.temperature', unit: '°F' },
+    { key: 'hum', id: 'humidity', name: 'Humidity', type: 'number', role: 'value.humidity', unit: '%' },
+    { key: 'dew_point', id: 'dewPoint', name: 'Dew point', type: 'number', role: 'value.temperature', unit: '°F' },
+    { key: 'wind_chill', id: 'windChill', name: 'Wind chill', type: 'number', role: 'value.temperature', unit: '°F' },
+    { key: 'heat_index', id: 'heatIndex', name: 'Heat index', type: 'number', role: 'value.temperature', unit: '°F' },
+    { key: 'thw_index', id: 'thwIndex', name: 'THW index', type: 'number', role: 'value.temperature', unit: '°F' },
+    {
+        key: 'thsw_index',
+        id: 'thswIndex',
+        name: 'THSW index',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'wind_speed_last',
+        id: 'windSpeedLast',
+        name: 'Wind speed (last)',
+        type: 'number',
+        role: 'value.speed.wind',
+        unit: 'mph',
+    },
+    {
+        key: 'wind_dir_last',
+        id: 'windDirLast',
+        name: 'Wind direction (last)',
+        type: 'number',
+        role: 'value.direction.wind',
+        unit: '°',
+    },
+    {
+        key: 'wind_speed_avg_last_10_min',
+        id: 'windSpeedAvg10Min',
+        name: 'Wind speed avg (10 min)',
+        type: 'number',
+        role: 'value.speed.wind',
+        unit: 'mph',
+    },
+    {
+        key: 'wind_speed_hi_last_10_min',
+        id: 'windSpeedHi10Min',
+        name: 'Wind gust (10 min)',
+        type: 'number',
+        role: 'value.speed.wind.max',
+        unit: 'mph',
+    },
+    {
+        key: 'rain_rate_last',
+        id: 'rainRateLast',
+        name: 'Rain rate',
+        type: 'number',
+        role: 'value.precipitation',
+        unit: 'counts/h',
+    },
+    {
+        key: 'rainfall_last_15_min',
+        id: 'rainfall15Min',
+        name: 'Rainfall (last 15 min)',
+        type: 'number',
+        role: 'value.precipitation',
+        unit: 'counts',
+    },
+    {
+        key: 'rainfall_daily',
+        id: 'rainfallDaily',
+        name: 'Rainfall today',
+        type: 'number',
+        role: 'value.rain.today',
+        unit: 'counts',
+    },
+    {
+        key: 'rainfall_monthly',
+        id: 'rainfallMonthly',
+        name: 'Rainfall this month',
+        type: 'number',
+        role: 'value.precipitation',
+        unit: 'counts',
+    },
+    {
+        key: 'rainfall_year',
+        id: 'rainfallYear',
+        name: 'Rainfall this year',
+        type: 'number',
+        role: 'value.precipitation',
+        unit: 'counts',
+    },
+    {
+        key: 'rain_storm',
+        id: 'rainStorm',
+        name: 'Current rain storm total',
+        type: 'number',
+        role: 'value.precipitation',
+        unit: 'counts',
+    },
+    { key: 'solar_rad', id: 'solarRad', name: 'Solar radiation', type: 'number', role: 'value', unit: 'W/m²' },
+    { key: 'uv_index', id: 'uvIndex', name: 'UV index', type: 'number', role: 'value', unit: 'Index' },
+    {
+        key: 'trans_battery_flag',
+        id: 'lowBattery',
+        name: 'Transmitter battery low',
+        type: 'boolean',
+        role: 'indicator.lowbat',
+    },
+    {
+        key: 'rx_state',
+        id: 'receptionState',
+        name: 'Radio reception state',
+        type: 'number',
+        role: 'value',
+        states: { 0: 'Synched & Tracking', 1: 'Synched', 2: 'Scanning' },
+    },
+];
+
+const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
+    {
+        key: 'temp_1',
+        id: 'soilTemp1',
+        name: 'Soil temperature 1',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'temp_2',
+        id: 'soilTemp2',
+        name: 'Soil temperature 2',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'temp_3',
+        id: 'soilTemp3',
+        name: 'Soil temperature 3',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'temp_4',
+        id: 'soilTemp4',
+        name: 'Soil temperature 4',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'moist_soil_1',
+        id: 'soilMoisture1',
+        name: 'Soil moisture 1',
+        type: 'number',
+        role: 'value.humidity',
+        unit: 'cb',
+    },
+    {
+        key: 'moist_soil_2',
+        id: 'soilMoisture2',
+        name: 'Soil moisture 2',
+        type: 'number',
+        role: 'value.humidity',
+        unit: 'cb',
+    },
+    {
+        key: 'moist_soil_3',
+        id: 'soilMoisture3',
+        name: 'Soil moisture 3',
+        type: 'number',
+        role: 'value.humidity',
+        unit: 'cb',
+    },
+    {
+        key: 'moist_soil_4',
+        id: 'soilMoisture4',
+        name: 'Soil moisture 4',
+        type: 'number',
+        role: 'value.humidity',
+        unit: 'cb',
+    },
+    { key: 'wet_leaf_1', id: 'leafWetness1', name: 'Leaf wetness 1', type: 'number', role: 'value' },
+    { key: 'wet_leaf_2', id: 'leafWetness2', name: 'Leaf wetness 2', type: 'number', role: 'value' },
+    {
+        key: 'trans_battery_flag',
+        id: 'lowBattery',
+        name: 'Transmitter battery low',
+        type: 'boolean',
+        role: 'indicator.lowbat',
+    },
+];
+
+const BAR_FIELDS: FieldDefinition<LssBarCondition>[] = [
+    {
+        key: 'bar_sea_level',
+        id: 'seaLevel',
+        name: 'Barometer (sea level)',
+        type: 'number',
+        role: 'value.pressure',
+        unit: 'inHg',
+    },
+    {
+        key: 'bar_absolute',
+        id: 'absolute',
+        name: 'Barometer (absolute)',
+        type: 'number',
+        role: 'value.pressure',
+        unit: 'inHg',
+    },
+    { key: 'bar_trend', id: 'trend', name: 'Barometer trend (3h)', type: 'number', role: 'value.pressure' },
+];
+
+const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
+    {
+        key: 'temp_in',
+        id: 'temperature',
+        name: 'Inside temperature',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    { key: 'hum_in', id: 'humidity', name: 'Inside humidity', type: 'number', role: 'value.humidity', unit: '%' },
+    {
+        key: 'dew_point_in',
+        id: 'dewPoint',
+        name: 'Inside dew point',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+    {
+        key: 'heat_index_in',
+        id: 'heatIndex',
+        name: 'Inside heat index',
+        type: 'number',
+        role: 'value.temperature',
+        unit: '°F',
+    },
+];
+
+/** Fields that are updated by the real-time UDP broadcast (subset of ISS fields) */
+const REALTIME_ISS_FIELDS: { key: string; id: string }[] = [
+    { key: 'wind_speed_last', id: 'windSpeedLast' },
+    { key: 'wind_dir_last', id: 'windDirLast' },
+    { key: 'rain_rate_last', id: 'rainRateLast' },
+    { key: 'rainfall_daily', id: 'rainfallDaily' },
+    { key: 'rainfall_monthly', id: 'rainfallMonthly' },
+    { key: 'rainfall_year', id: 'rainfallYear' },
+    { key: 'wind_speed_hi_last_10_min', id: 'windSpeedHi10Min' },
+];
+
+const HTTP_TIMEOUT_MS = 8000;
+const REALTIME_UDP_PORT = 22222;
+/** Renew the real-time broadcast request this many seconds before it expires */
+const REALTIME_RENEW_MARGIN_S = 15;
+/** Maximum number of transmitters a WeatherLink Live can track (txid range 1..8, plus 0 as a defensive fallback) */
+const MAX_TRANSMITTER_ID = 8;
+
+/**
+ * Validates that a value is a plausible transmitter ID before it is used to build an ioBroker object ID.
+ *
+ * @param txid - The raw (untrusted) transmitter ID from the API/broadcast payload
+ * @returns The validated transmitter ID, or `undefined` if it is not a plausible value
+ */
+function validateTxId(txid: unknown): number | undefined {
+    if (typeof txid !== 'number' || !Number.isInteger(txid) || txid < 0 || txid > MAX_TRANSMITTER_ID) {
+        return undefined;
+    }
+    return txid;
+}
+
+class Davis extends utils.Adapter {
+    private pollTimer: ReturnType<typeof this.setInterval> | undefined;
+    private realtimeRenewTimer: ReturnType<typeof this.setTimeout> | undefined;
+    private udpSocket: dgram.Socket | undefined;
+    private readonly knownChannels = new Set<string>();
+    private readonly knownStates = new Set<string>();
+    private isConnected = false;
+
+    public constructor(options: Partial<utils.AdapterOptions> = {}) {
+        super({
+            ...options,
+            name: 'davis',
+        });
+        this.on('ready', this.onReady.bind(this));
+        this.on('unload', this.onUnload.bind(this));
+    }
+
+    private async onReady(): Promise<void> {
+        await this.setObjectNotExistsAsync('info', {
+            type: 'channel',
+            common: { name: 'Information' },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync('info.connection', {
+            type: 'state',
+            common: {
+                name: 'Connection to WeatherLink Live established',
+                type: 'boolean',
+                role: 'indicator.connected',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync('sensors', {
+            type: 'channel',
+            common: { name: 'Sensors' },
+            native: {},
+        });
+
+        if (!this.config.host) {
+            this.log.error('No WeatherLink Live IP address configured. Please configure the adapter instance.');
+            await this.setConnected(false);
+            return;
+        }
+
+        const pollIntervalMs = Math.max(10, Number(this.config.pollInterval) || 20) * 1000;
+
+        // Do an initial poll immediately, then continue on the configured interval
+        await this.poll();
+        this.pollTimer = this.setInterval(() => {
+            void this.poll();
+        }, pollIntervalMs);
+
+        if (this.config.realtimeEnabled) {
+            await this.startRealtime();
+        }
+    }
+
+    /**
+     * Build the base URL for the WeatherLink Live Local API.
+     */
+    private get baseUrl(): string {
+        const port = Number(this.config.port) || 80;
+        return `http://${this.config.host}:${port}`;
+    }
+
+    private async setConnected(connected: boolean): Promise<void> {
+        if (this.isConnected !== connected) {
+            this.isConnected = connected;
+            await this.setStateAsync('info.connection', { val: connected, ack: true });
+        }
+    }
+
+    private async fetchJson<T>(url: string): Promise<T> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+        try {
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return (await response.json()) as T;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    /**
+     * Polls /v1/current_conditions and updates all states.
+     */
+    private async poll(): Promise<void> {
+        try {
+            const response = await this.fetchJson<CurrentConditionsResponse>(`${this.baseUrl}/v1/current_conditions`);
+
+            if (!response.data || response.error) {
+                throw new Error(response.error?.message ?? 'Empty response from WeatherLink Live');
+            }
+
+            for (const condition of response.data.conditions) {
+                await this.processCondition(condition);
+            }
+
+            await this.setConnected(true);
+        } catch (error) {
+            this.log.error(`Polling WeatherLink Live failed: ${(error as Error).message}`);
+            await this.setConnected(false);
+        }
+    }
+
+    /**
+     * Dispatches a single condition record to the matching channel/field handler.
+     * Different stations report a different set (and count) of records here,
+     * depending on which transmitters/sensors are configured.
+     *
+     * @param condition - Raw condition record from the API/broadcast response
+     */
+    private async processCondition(condition: Condition): Promise<void> {
+        switch (condition.data_structure_type) {
+            case DataStructureType.ISS: {
+                const txid = validateTxId(condition.txid);
+                if (txid === undefined) {
+                    this.log.debug(`Ignoring ISS condition with implausible txid: ${JSON.stringify(condition.txid)}`);
+                    break;
+                }
+                await this.updateChannel(`sensors.tx${txid}`, `Transmitter ${txid} (ISS)`, ISS_FIELDS, condition);
+                break;
+            }
+            case DataStructureType.LeafSoil: {
+                const txid = validateTxId(condition.txid);
+                if (txid === undefined) {
+                    this.log.debug(
+                        `Ignoring Leaf/Soil condition with implausible txid: ${JSON.stringify(condition.txid)}`,
+                    );
+                    break;
+                }
+                await this.updateChannel(
+                    `sensors.soilLeaf${txid}`,
+                    `Transmitter ${txid} (Leaf/Soil)`,
+                    LEAF_SOIL_FIELDS,
+                    condition,
+                );
+                break;
+            }
+            case DataStructureType.LssBar:
+                await this.updateChannel('sensors.barometer', 'Barometer', BAR_FIELDS, condition);
+                break;
+            case DataStructureType.LssTempHum:
+                await this.updateChannel('sensors.inside', 'Inside sensor', INSIDE_FIELDS, condition);
+                break;
+            default:
+                this.log.debug(`Unknown data_structure_type: ${JSON.stringify(condition)}`);
+        }
+    }
+
+    /**
+     * Creates the channel (if new) and all states for the fields that are
+     * actually present in the payload, then updates their values.
+     * Only fields present in the current record are created, so the object
+     * tree automatically adapts to the sensors actually installed on this station.
+     *
+     * @param channelId - Object ID of the channel, relative to the adapter namespace
+     * @param channelName - Display name for the channel
+     * @param fields - Field definitions describing which record properties map to which states
+     * @param record - The raw condition record containing the current values
+     */
+    private async updateChannel<T>(
+        channelId: string,
+        channelName: string,
+        fields: FieldDefinition<T>[],
+        record: T,
+    ): Promise<void> {
+        if (!this.knownChannels.has(channelId)) {
+            await this.setObjectNotExistsAsync(channelId, {
+                type: 'channel',
+                common: { name: channelName },
+                native: {},
+            });
+            this.knownChannels.add(channelId);
+        }
+
+        for (const field of fields) {
+            if (!(field.key in (record as object))) {
+                // This station/transmitter configuration does not report this field at all
+                continue;
+            }
+            const value = record[field.key] as unknown as number | boolean | null | undefined;
+            const stateId = `${channelId}.${field.id}`;
+
+            if (!this.knownStates.has(stateId)) {
+                await this.setObjectNotExistsAsync(stateId, {
+                    type: 'state',
+                    common: {
+                        name: field.name,
+                        type: field.type,
+                        role: field.role,
+                        unit: field.unit,
+                        states: field.states,
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(stateId);
+            }
+
+            if (value === null || value === undefined) {
+                // Sensor exists but currently has no valid reading; keep last known value
+                continue;
+            }
+
+            const val = field.type === 'boolean' ? Boolean(value) : Number(value);
+            await this.setStateAsync(stateId, { val, ack: true });
+        }
+    }
+
+    /**
+     * Activates the real-time UDP broadcast on the WeatherLink Live and starts
+     * listening for broadcast packets on port 22222. Renews the broadcast
+     * before it expires so the real-time stream stays alive continuously.
+     */
+    private async startRealtime(): Promise<void> {
+        this.udpSocket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+
+        this.udpSocket.on('message', (msg, rinfo) => {
+            if (rinfo.address !== this.config.host) {
+                this.log.debug(`Ignoring real-time UDP packet from unexpected sender ${rinfo.address}`);
+                return;
+            }
+            this.handleRealtimePacket(msg);
+        });
+
+        this.udpSocket.on('error', error => {
+            this.log.error(`Real-time UDP socket error: ${error.message}`);
+        });
+
+        try {
+            await new Promise<void>((resolve, reject) => {
+                this.udpSocket!.once('error', reject);
+                this.udpSocket!.bind(REALTIME_UDP_PORT, () => {
+                    this.udpSocket!.removeListener('error', reject);
+                    resolve();
+                });
+            });
+        } catch (error) {
+            this.log.error(`Could not bind real-time UDP socket: ${(error as Error).message}`);
+            this.udpSocket.close();
+            this.udpSocket = undefined;
+            return;
+        }
+
+        await this.activateRealtime();
+    }
+
+    /**
+     * Sends the HTTP request that (re-)activates the UDP broadcast, then
+     * schedules the next renewal shortly before the granted duration expires.
+     */
+    private async activateRealtime(): Promise<void> {
+        const requestedDuration = Math.min(86400, Math.max(20, Number(this.config.realtimeDuration) || 90));
+        try {
+            const response = await this.fetchJson<RealTimeActivationResponse>(
+                `${this.baseUrl}/v1/real_time?duration=${requestedDuration}`,
+            );
+
+            if (!response.data || response.error) {
+                throw new Error(response.error?.message ?? 'Empty response activating real-time broadcast');
+            }
+
+            const grantedDuration = response.data.duration;
+            this.log.debug(
+                `Real-time broadcast active for ${grantedDuration}s on port ${response.data.broadcast_port}`,
+            );
+
+            const renewInMs = Math.max(5, grantedDuration - REALTIME_RENEW_MARGIN_S) * 1000;
+            this.realtimeRenewTimer = this.setTimeout(() => {
+                void this.activateRealtime();
+            }, renewInMs);
+        } catch (error) {
+            this.log.warn(`Could not activate real-time broadcast, retrying in 30s: ${(error as Error).message}`);
+            this.realtimeRenewTimer = this.setTimeout(() => {
+                void this.activateRealtime();
+            }, 30000);
+        }
+    }
+
+    /**
+     * Parses and applies an incoming UDP real-time broadcast packet.
+     *
+     * @param msg - Raw UDP payload received from the WeatherLink Live
+     */
+    private handleRealtimePacket(msg: Buffer): void {
+        let packet: RealtimeBroadcastPacket;
+        try {
+            packet = JSON.parse(msg.toString('utf8'));
+        } catch (error) {
+            this.log.debug(`Ignoring malformed real-time UDP packet: ${(error as Error).message}`);
+            return;
+        }
+
+        if (!packet?.conditions) {
+            return;
+        }
+
+        for (const record of packet.conditions) {
+            if (record.data_structure_type !== 1) {
+                continue;
+            }
+            const txid = validateTxId(record.txid);
+            if (txid === undefined) {
+                continue;
+            }
+            const channelId = `sensors.tx${txid}`;
+            if (!this.knownChannels.has(channelId)) {
+                // Channel not created yet by a regular poll; skip until the next poll cycle creates it
+                continue;
+            }
+            for (const field of REALTIME_ISS_FIELDS) {
+                const value = (record as unknown as Record<string, number | null | undefined>)[field.key];
+                if (value === null || value === undefined) {
+                    continue;
+                }
+                this.setStateAsync(`${channelId}.${field.id}`, { val: Number(value), ack: true }).catch(
+                    (error: Error) => {
+                        this.log.debug(`Could not update ${channelId}.${field.id}: ${error.message}`);
+                    },
+                );
+            }
+        }
+    }
+
+    private onUnload(callback: () => void): void {
+        try {
+            if (this.pollTimer) {
+                this.clearInterval(this.pollTimer);
+                this.pollTimer = undefined;
+            }
+            if (this.realtimeRenewTimer) {
+                this.clearTimeout(this.realtimeRenewTimer);
+                this.realtimeRenewTimer = undefined;
+            }
+            if (this.udpSocket) {
+                this.udpSocket.close();
+                this.udpSocket = undefined;
+            }
+            callback();
+        } catch (error) {
+            this.log.error(`Error during unloading: ${(error as Error).message}`);
+            callback();
+        }
+    }
+}
+
+if (require.main !== module) {
+    module.exports = (options: Partial<utils.AdapterOptions> | undefined) => new Davis(options);
+} else {
+    (() => new Davis())();
+}

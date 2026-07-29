@@ -1,0 +1,11 @@
+{
+    "WeatherLink Live IP address": "WeatherLink Live IP-Adresse",
+    "Local IP address of the WeatherLink Live device, e.g. 192.168.1.50": "Lokale IP-Adresse der WeatherLink Live, z.B. 192.168.1.50",
+    "Port": "Port",
+    "Poll interval (seconds)": "Abfrageintervall (Sekunden)",
+    "Minimum 10 seconds as required by the WeatherLink Live Local API": "Minimum 10 Sekunden gemäß WeatherLink Live Local API",
+    "Enable real-time mode (UDP broadcast)": "Echtzeit-Modus aktivieren (UDP-Broadcast)",
+    "Requests the WeatherLink Live to broadcast wind and rain data every 2.5s over UDP": "Fordert die WeatherLink Live auf, Wind- und Regendaten alle 2,5s per UDP zu senden",
+    "Real-time broadcast duration (seconds)": "Dauer des Echtzeit-Broadcasts (Sekunden)",
+    "Duration requested per activation; will be renewed automatically. Max 86400": "Angeforderte Dauer pro Aktivierung; wird automatisch erneuert. Max 86400"
+}
