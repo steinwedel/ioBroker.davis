@@ -61,7 +61,7 @@ davis.0
 ├── sensors
 │   ├── tx<N>                   Ein Kanal je ISS-Transmitter (Außensensor)
 │   │   ├── temperature, humidity, dewPoint, windChill, heatIndex, ...
-│   │   ├── windSpeedLast, windDirLast, windSpeedAvg10Min, windSpeedHi10Min
+│   │   ├── windSpeedLast, windDirLast, windDirLastText, windSpeedAvg10Min, windSpeedHi10Min
 │   │   ├── rainRateLast, rainfall15Min, rainfallDaily, rainfallMonthly, rainfallYear, rainStorm
 │   │   ├── solarRad, uvIndex                (nur falls Solarsensor vorhanden)
 │   │   └── lowBattery, receptionState
@@ -80,6 +80,8 @@ davis.0
 ```
 
 **Wichtig:** Ein Kanal/State wird nur angelegt, wenn die Station den entsprechenden Sensor tatsächlich meldet. Eine Station ohne Solarstrahlungssensor bekommt z. B. keine `solarRad`/`uvIndex`-States, und ohne Barometer entsteht kein `sensors.barometer`-Kanal. Ebenso werden die `calculated.*`-States nur angelegt, wenn genügend Sensordaten für mindestens eine der unten beschriebenen Berechnungsmethoden vorhanden sind.
+
+`windDirLastText` enthält die aktuelle Windrichtung als 16-teilige Kompass-Abkürzung (z. B. `N`, `NNO`, `O`, `SSW`, …), abgeleitet aus `windDirLast` in Grad.
 
 ## Bewölkungsgrad-Schätzung (`calculated.cloudCover`)
 
@@ -127,6 +129,10 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+* (steinwedel) **NEW**: `sensors.tx<N>.windDirLastText` - current wind direction as a 16-point compass abbreviation (e.g. "N", "NNO", "O", "SSW"), derived from `windDirLast`
+
 ### 0.0.8 (2026-07-30)
 * (steinwedel) **FIXED**: The solar-based cloud cover model now learns a site-specific clear-sky reference per sun elevation angle (persisted in `calculated.clearSkyReference`) instead of relying solely on the generic Haurwitz formula, which could overestimate the theoretically achievable clear-sky irradiance and thus report cloud cover on genuinely clear days (observed e.g. 14% instead of 0% at 28° sun elevation)
 

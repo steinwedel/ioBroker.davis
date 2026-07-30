@@ -9,6 +9,7 @@ import { discoverWeatherLinkLive } from './lib/discovery';
 import { getSolarElevationDeg } from './lib/sun';
 import { computeWeatherIcon } from './lib/weathericon';
 import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
+import { getCompassDirection } from './lib/winddirection';
 import {
     convertRainCount,
     convertValue,
@@ -44,6 +45,8 @@ interface FieldDefinition<T> {
     isRain?: boolean;
     /** For rain fields that represent a rate (counts/hour) rather than an accumulated amount */
     isRainRate?: boolean;
+    /** Marks a wind direction field for which a companion `<id>Text` compass-direction state (e.g. "NNO") should also be created */
+    compassText?: boolean;
     states?: Record<number, string>;
 }
 
@@ -112,6 +115,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         type: 'number',
         role: 'value.direction.wind',
         unit: '°',
+        compassText: true,
     },
     {
         key: 'wind_speed_avg_last_10_min',
@@ -845,6 +849,22 @@ class Davis extends utils.Adapter {
                 this.knownStates.add(stateId);
             }
 
+            const compassStateId = `${stateId}Text`;
+            if (field.compassText && !this.knownStates.has(compassStateId)) {
+                await this.setObjectNotExistsAsync(compassStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (compass)`,
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(compassStateId);
+            }
+
             if (value === null || value === undefined) {
                 // Sensor exists but currently has no valid reading; keep last known value
                 continue;
@@ -863,6 +883,10 @@ class Davis extends utils.Adapter {
                         ? convertValue(Number(value), field.unitKind, this.units)
                         : Number(value);
             await this.setStateAsync(stateId, { val, ack: true });
+
+            if (field.compassText) {
+                await this.setStateAsync(compassStateId, { val: getCompassDirection(Number(value)), ack: true });
+            }
         }
     }
 
