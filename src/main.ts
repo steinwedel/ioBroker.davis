@@ -7,6 +7,7 @@ import * as utils from '@iobroker/adapter-core';
 import { computeCloudCoverHeuristic, computeCloudCoverSolar, type CloudCoverModel } from './lib/cloudcover';
 import { discoverWeatherLinkLive } from './lib/discovery';
 import { getSolarElevationDeg } from './lib/sun';
+import { computeWeatherIcon } from './lib/weathericon';
 import {
     convertRainCount,
     convertValue,
@@ -371,6 +372,8 @@ class Davis extends utils.Adapter {
         super({
             ...options,
             name: 'davis',
+            // Populates this.latitude/this.longitude from ioBroker's system-wide location setting
+            useFormatDate: true,
         });
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
@@ -379,6 +382,13 @@ class Davis extends utils.Adapter {
 
     private async onReady(): Promise<void> {
         this.units = this.config.units === 'metric' ? 'metric' : 'imperial';
+
+        if (!this.hasValidLocation()) {
+            this.log.info(
+                'No latitude/longitude configured in the ioBroker system settings (Hauptseite -> Einstellungen); ' +
+                    'solar-based cloud cover and day/night icon detection will be disabled.',
+            );
+        }
 
         await this.setObjectNotExistsAsync('info', {
             type: 'channel',
@@ -465,6 +475,7 @@ class Davis extends utils.Adapter {
                 await this.processCondition(condition);
             }
             await this.updateCloudCover(response.data.conditions);
+            await this.updateWeatherIcon(response.data.conditions);
 
             await this.setConnected(true);
         } catch (error) {
@@ -539,7 +550,7 @@ class Davis extends utils.Adapter {
         let result: { percent: number; model: CloudCoverModel } | undefined;
 
         if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
-            const elevationDeg = getSolarElevationDeg(new Date(), this.config.latitude, this.config.longitude);
+            const elevationDeg = getSolarElevationDeg(new Date(), this.latitude!, this.longitude!);
             const percent = computeCloudCoverSolar(iss.solar_rad, elevationDeg);
             if (percent !== undefined) {
                 result = { percent, model: 'solar' };
@@ -553,8 +564,16 @@ class Davis extends utils.Adapter {
             iss?.dew_point !== null &&
             iss?.dew_point !== undefined
         ) {
-            const barTrend = barometer?.bar_trend ?? undefined;
-            result = computeCloudCoverHeuristic(iss.temp, iss.dew_point, barTrend ?? undefined);
+            // The Local API always reports temp/dew_point in °F and bar_trend in inHg, but the
+            // heuristic's thresholds are calibrated in °C / hPa - convert (independently of the
+            // user's display unit setting, which only affects what gets shown in the states).
+            const tempC = convertValue(iss.temp, 'temperature', 'metric');
+            const dewPointC = convertValue(iss.dew_point, 'temperature', 'metric');
+            const barTrendHpa =
+                barometer?.bar_trend !== null && barometer?.bar_trend !== undefined
+                    ? convertValue(barometer.bar_trend, 'pressure', 'metric')
+                    : undefined;
+            result = computeCloudCoverHeuristic(tempC, dewPointC, barTrendHpa);
         }
 
         if (!result) {
@@ -602,14 +621,116 @@ class Davis extends utils.Adapter {
     }
 
     /**
-     * Checks whether a usable latitude/longitude has been configured (required for Model A).
+     * Estimates a simplified current-weather icon/condition from the same poll's condition
+     * records, reusing the cloud cover estimate (if any) computed just before this is called.
+     * Creates no state at all if neither cloud cover nor an active rain sensor is available.
      *
-     * @returns `true` if both coordinates are configured and within their valid ranges
+     * @param conditions - All condition records from the current poll
+     */
+    private async updateWeatherIcon(conditions: Condition[]): Promise<void> {
+        const iss = conditions.find((c): c is IssCondition => c.data_structure_type === DataStructureType.ISS);
+        if (!iss) {
+            return;
+        }
+
+        const cloudCoverState = await this.getStateAsync('sensors.cloudCover');
+        const cloudCoverPercent =
+            typeof cloudCoverState?.val === 'number' && cloudCoverState.ack ? cloudCoverState.val : undefined;
+
+        const tempC =
+            iss.temp !== null && iss.temp !== undefined ? convertValue(iss.temp, 'temperature', 'metric') : undefined;
+        const dewPointC =
+            iss.dew_point !== null && iss.dew_point !== undefined
+                ? convertValue(iss.dew_point, 'temperature', 'metric')
+                : undefined;
+        const dewPointDepressionC = tempC !== undefined && dewPointC !== undefined ? tempC - dewPointC : undefined;
+        const windSpeedKmh =
+            iss.wind_speed_last !== null && iss.wind_speed_last !== undefined
+                ? convertValue(iss.wind_speed_last, 'windSpeed', 'metric')
+                : undefined;
+        const rainRateMmh =
+            iss.rain_rate_last !== null && iss.rain_rate_last !== undefined
+                ? convertRainCount(iss.rain_rate_last, iss.rain_size, 'metric')
+                : undefined;
+
+        const elevationDeg = this.hasValidLocation()
+            ? getSolarElevationDeg(new Date(), this.latitude!, this.longitude!)
+            : undefined;
+        // Fall back to "is the sun above the horizon right now" only when we have a location;
+        // without one, assume daytime icons (a rough default, since we cannot know better).
+        const isDay = elevationDeg === undefined || elevationDeg > 0;
+
+        const result = computeWeatherIcon({
+            cloudCoverPercent,
+            rainRateLast: rainRateMmh,
+            tempC,
+            dewPointDepressionC,
+            windSpeed: windSpeedKmh,
+            isDay,
+        });
+
+        if (!result) {
+            return;
+        }
+
+        if (!this.knownChannels.has('sensors.weatherCode')) {
+            await this.setObjectNotExistsAsync('sensors.weatherCode', {
+                type: 'state',
+                common: {
+                    name: 'Weather condition code (WMO-inspired)',
+                    type: 'number',
+                    role: 'value',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            await this.setObjectNotExistsAsync('sensors.weatherState', {
+                type: 'state',
+                common: {
+                    name: 'Weather condition',
+                    type: 'string',
+                    role: 'text',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            await this.setObjectNotExistsAsync('sensors.weatherIcon', {
+                type: 'state',
+                common: {
+                    name: 'Weather icon path',
+                    type: 'string',
+                    role: 'text.url',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            this.knownChannels.add('sensors.weatherCode');
+        }
+
+        await this.setStateAsync('sensors.weatherCode', { val: result.code, ack: true });
+        await this.setStateAsync('sensors.weatherState', { val: result.state, ack: true });
+        await this.setStateAsync('sensors.weatherIcon', {
+            val: `/adapter/${this.name}/${result.iconPath}`,
+            ack: true,
+        });
+    }
+
+    /**
+     * Checks whether a usable latitude/longitude is available (required for Model A / day-night
+     * detection). The coordinates come from ioBroker's system-wide location setting
+     * (`system.config`), not from this adapter's own configuration.
+     *
+     * @returns `true` if both coordinates were found and are within their valid ranges
      */
     private hasValidLocation(): boolean {
-        const lat = Number(this.config.latitude);
-        const lon = Number(this.config.longitude);
+        const lat = this.latitude;
+        const lon = this.longitude;
         return (
+            lat !== undefined &&
+            lon !== undefined &&
             Number.isFinite(lat) &&
             Number.isFinite(lon) &&
             !(lat === 0 && lon === 0) &&

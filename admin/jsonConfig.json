@@ -69,40 +69,17 @@
         },
         "cloudCoverHeader": {
             "type": "header",
-            "text": "Cloud cover estimation",
+            "text": "Cloud cover / weather icon estimation",
             "size": 4,
             "newLine": true
         },
         "cloudCoverInfo": {
             "type": "staticText",
-            "text": "Latitude/longitude are only used to estimate cloud cover from a solar radiation sensor (if present). Without them, or without a solar sensor, a rougher estimate based on dew point (and pressure trend, if a barometer is present) is used instead. If neither is possible, no cloud cover value is created.",
+            "text": "Cloud cover and the current weather icon are estimated from a solar radiation sensor (if present), using this ioBroker installation's location (Admin -> System settings). Without a configured location or a solar sensor, a rougher estimate based on dew point (and pressure trend, if a barometer is present) is used instead. If neither is possible, no cloud cover or weather icon value is created.",
             "newLine": true,
             "xs": 12,
             "sm": 12,
             "md": 8
-        },
-        "latitude": {
-            "type": "number",
-            "label": "Latitude",
-            "help": "Degrees, positive = north",
-            "min": -90,
-            "max": 90,
-            "default": 0,
-            "newLine": true,
-            "xs": 12,
-            "sm": 6,
-            "md": 3
-        },
-        "longitude": {
-            "type": "number",
-            "label": "Longitude",
-            "help": "Degrees, positive = east",
-            "min": -180,
-            "max": 180,
-            "default": 0,
-            "xs": 12,
-            "sm": 6,
-            "md": 3
         },
         "realtimeEnabled": {
             "type": "checkbox",
