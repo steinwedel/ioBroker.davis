@@ -411,6 +411,11 @@ class Davis extends utils.Adapter {
             common: { name: 'Sensors' },
             native: {},
         });
+        await this.setObjectNotExistsAsync('calculated', {
+            type: 'channel',
+            common: { name: 'Calculated values' },
+            native: {},
+        });
 
         if (!this.config.host) {
             this.log.error('No WeatherLink Live IP address configured. Please configure the adapter instance.');
@@ -531,7 +536,7 @@ class Davis extends utils.Adapter {
 
     /**
      * Estimates the cloud cover from the current poll's condition records and writes it to
-     * `sensors.cloudCover` / `sensors.cloudCoverModel`, using whichever model the currently
+     * `calculated.cloudCover` / `calculated.cloudCoverModel`, using whichever model the currently
      * installed sensors support:
      * - Model A ("solar"): from solar radiation + sun elevation, if a solar sensor and this
      *   adapter's configured latitude/longitude are available and the sun is high enough.
@@ -582,8 +587,8 @@ class Davis extends utils.Adapter {
             return;
         }
 
-        if (!this.knownChannels.has('sensors.cloudCover')) {
-            await this.setObjectNotExistsAsync('sensors.cloudCover', {
+        if (!this.knownChannels.has('calculated.cloudCover')) {
+            await this.setObjectNotExistsAsync('calculated.cloudCover', {
                 type: 'state',
                 common: {
                     name: 'Estimated cloud cover',
@@ -597,7 +602,7 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            await this.setObjectNotExistsAsync('sensors.cloudCoverModel', {
+            await this.setObjectNotExistsAsync('calculated.cloudCoverModel', {
                 type: 'state',
                 common: {
                     name: 'Cloud cover estimation model used',
@@ -613,11 +618,11 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            this.knownChannels.add('sensors.cloudCover');
+            this.knownChannels.add('calculated.cloudCover');
         }
 
-        await this.setStateAsync('sensors.cloudCover', { val: result.percent, ack: true });
-        await this.setStateAsync('sensors.cloudCoverModel', { val: result.model, ack: true });
+        await this.setStateAsync('calculated.cloudCover', { val: result.percent, ack: true });
+        await this.setStateAsync('calculated.cloudCoverModel', { val: result.model, ack: true });
     }
 
     /**
@@ -633,7 +638,7 @@ class Davis extends utils.Adapter {
             return;
         }
 
-        const cloudCoverState = await this.getStateAsync('sensors.cloudCover');
+        const cloudCoverState = await this.getStateAsync('calculated.cloudCover');
         const cloudCoverPercent =
             typeof cloudCoverState?.val === 'number' && cloudCoverState.ack ? cloudCoverState.val : undefined;
 
@@ -673,8 +678,8 @@ class Davis extends utils.Adapter {
             return;
         }
 
-        if (!this.knownChannels.has('sensors.weatherCode')) {
-            await this.setObjectNotExistsAsync('sensors.weatherCode', {
+        if (!this.knownChannels.has('calculated.weatherCode')) {
+            await this.setObjectNotExistsAsync('calculated.weatherCode', {
                 type: 'state',
                 common: {
                     name: 'Weather condition code (WMO-inspired)',
@@ -685,7 +690,7 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            await this.setObjectNotExistsAsync('sensors.weatherState', {
+            await this.setObjectNotExistsAsync('calculated.weatherState', {
                 type: 'state',
                 common: {
                     name: 'Weather condition',
@@ -696,7 +701,7 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            await this.setObjectNotExistsAsync('sensors.weatherIcon', {
+            await this.setObjectNotExistsAsync('calculated.weatherIcon', {
                 type: 'state',
                 common: {
                     name: 'Weather icon path',
@@ -707,12 +712,12 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            this.knownChannels.add('sensors.weatherCode');
+            this.knownChannels.add('calculated.weatherCode');
         }
 
-        await this.setStateAsync('sensors.weatherCode', { val: result.code, ack: true });
-        await this.setStateAsync('sensors.weatherState', { val: result.state, ack: true });
-        await this.setStateAsync('sensors.weatherIcon', {
+        await this.setStateAsync('calculated.weatherCode', { val: result.code, ack: true });
+        await this.setStateAsync('calculated.weatherState', { val: result.state, ack: true });
+        await this.setStateAsync('calculated.weatherIcon', {
             val: `/adapter/${this.name}/${result.iconPath}`,
             ack: true,
         });
