@@ -8,6 +8,7 @@ import { computeCloudCoverHeuristic, computeCloudCoverSolar, type CloudCoverMode
 import { discoverWeatherLinkLive } from './lib/discovery';
 import { getSolarElevationDeg } from './lib/sun';
 import { computeWeatherIcon } from './lib/weathericon';
+import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
 import {
     convertRainCount,
     convertValue,
@@ -366,6 +367,8 @@ class Davis extends utils.Adapter {
     private readonly knownChannels = new Set<string>();
     private readonly knownStates = new Set<string>();
     private isConnected = false;
+    /** Site-learned clear-sky reference for the solar cloud cover model, persisted across restarts */
+    private clearSkyReference: ClearSkyReferenceMap = {};
     private units: UnitSystem = 'imperial';
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
@@ -416,6 +419,25 @@ class Davis extends utils.Adapter {
             common: { name: 'Calculated values' },
             native: {},
         });
+        await this.setObjectNotExistsAsync('calculated.clearSkyReference', {
+            type: 'state',
+            common: {
+                name: 'Learned clear-sky solar radiation reference (internal, per sun elevation)',
+                type: 'string',
+                role: 'json',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+        const clearSkyState = await this.getStateAsync('calculated.clearSkyReference');
+        if (typeof clearSkyState?.val === 'string') {
+            try {
+                this.clearSkyReference = JSON.parse(clearSkyState.val);
+            } catch {
+                this.log.debug('Could not parse persisted clear-sky reference data, starting fresh.');
+            }
+        }
 
         if (!this.config.host) {
             this.log.error('No WeatherLink Live 6100 IP address configured. Please configure the adapter instance.');
@@ -556,7 +578,17 @@ class Davis extends utils.Adapter {
 
         if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
             const elevationDeg = getSolarElevationDeg(new Date(), this.latitude!, this.longitude!);
-            const percent = computeCloudCoverSolar(iss.solar_rad, elevationDeg);
+            if (elevationDeg > 0) {
+                this.clearSkyReference = recordObservation(
+                    this.clearSkyReference,
+                    elevationDeg,
+                    iss.solar_rad,
+                    Date.now(),
+                );
+                await this.persistClearSkyReference();
+            }
+            const learnedClearSky = getReference(this.clearSkyReference, elevationDeg, Date.now());
+            const percent = computeCloudCoverSolar(iss.solar_rad, elevationDeg, learnedClearSky);
             if (percent !== undefined) {
                 result = { percent, model: 'solar' };
             }
@@ -719,6 +751,16 @@ class Davis extends utils.Adapter {
         await this.setStateAsync('calculated.weatherState', { val: result.state, ack: true });
         await this.setStateAsync('calculated.weatherIcon', {
             val: `/adapter/${this.name}/${result.iconPath}`,
+            ack: true,
+        });
+    }
+
+    /**
+     * Persists the current learned clear-sky reference map so it survives adapter restarts.
+     */
+    private async persistClearSkyReference(): Promise<void> {
+        await this.setStateAsync('calculated.clearSkyReference', {
+            val: JSON.stringify(this.clearSkyReference),
             ack: true,
         });
     }

@@ -85,7 +85,9 @@ davis.0
 
 Da die WeatherLink Live 6100 selbst keinen Bewölkungsgrad liefert, wird er aus den vorhandenen Sensordaten geschätzt. Je nach Ausstattung der Station kommt eines von zwei Modellen zum Einsatz:
 
-1. **Solarstrahlungsbasiert** (`cloudCoverModel = "solar"`): Vergleicht die gemessene Solarstrahlung mit der theoretischen Klarhimmel-Einstrahlung (Haurwitz-Modell) für den aktuellen Sonnenstand. Voraussetzung: Solarstrahlungssensor vorhanden **und** Breiten-/Längengrad in den ioBroker-Systemeinstellungen hinterlegt **und** die Sonne steht ausreichend hoch (nicht bei Dämmerung/Nacht).
+1. **Solarstrahlungsbasiert** (`cloudCoverModel = "solar"`): Vergleicht die gemessene Solarstrahlung mit einer Klarhimmel-Referenz für den aktuellen Sonnenstand. Voraussetzung: Solarstrahlungssensor vorhanden **und** Breiten-/Längengrad in den ioBroker-Systemeinstellungen hinterlegt **und** die Sonne steht ausreichend hoch (nicht bei Dämmerung/Nacht).
+
+   Die Klarhimmel-Referenz wird **adaptiv pro Sonnenstand gelernt** (`calculated.clearSkyReference`, intern, Rolling-Fenster 15 Tage): Der Adapter merkt sich je 5°-Sonnenstand-Schritt den höchsten tatsächlich gemessenen Solarstrahlungswert und nutzt diesen als Referenz für „0 % Bewölkung" bei diesem Sonnenstand – das passt sich automatisch an die lokale Atmosphäre (Luftfeuchte, Dunst, Höhenlage) an. Bis für einen bestimmten Sonnenstand genügend eigene Messwerte vorliegen (typischerweise nach einigen wirklich klaren Tagen), verwendet der Adapter übergangsweise die generische Haurwitz-Formel als Startwert; diese kann besonders bei mittlerem Sonnenstand die real erreichbare Einstrahlung überschätzen und dadurch anfangs einen zu hohen Bewölkungsgrad an eigentlich klaren Tagen anzeigen.
 2. **Taupunkt-Heuristik** (`cloudCoverModel = "heuristic"` bzw. `"heuristic+pressure"`): Deutlich gröbere Schätzung anhand der Taupunkt-Depression (Differenz zwischen Temperatur und Taupunkt), optional verfeinert durch den 3-Stunden-Drucktrend, falls ein Barometer vorhanden ist. Funktioniert auch nachts oder ohne Solarsensor, ist aber nur ein Trendindikator.
 
 Ist keines der beiden Modelle mit den vorhandenen Sensoren berechenbar, wird `calculated.cloudCover` gar nicht erst angelegt.
@@ -125,6 +127,10 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+* (steinwedel) **FIXED**: The solar-based cloud cover model now learns a site-specific clear-sky reference per sun elevation angle (persisted in `calculated.clearSkyReference`) instead of relying solely on the generic Haurwitz formula, which could overestimate the theoretically achievable clear-sky irradiance and thus report cloud cover on genuinely clear days (observed e.g. 14% instead of 0% at 28° sun elevation)
+
 ### 0.0.7 (2026-07-30)
 * (steinwedel) **CHANGED**: Vollständiger Gerätename "Davis WeatherLink Live 6100" statt nur "Davis WeatherLink Live" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet
 

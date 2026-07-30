@@ -4,11 +4,13 @@
  * Two independent models are used depending on which sensors are actually
  * present on the station:
  *
- * - Model A ("solar"): compares measured solar radiation against a
- *   theoretical clear-sky value (Haurwitz model) to derive a clear-sky
- *   index, which is then mapped to a cloud cover percentage. Requires a
- *   solar radiation sensor and a sun elevation above a minimum threshold
- *   (i.e. daytime only).
+ * - Model A ("solar"): compares measured solar radiation against a clear-sky
+ *   reference value to derive a clear-sky index, which is then mapped to a
+ *   cloud cover percentage. The reference is either a site-learned value
+ *   (see `clearskyreference.ts`, preferred once enough data has been
+ *   collected) or, until then, a generic theoretical clear-sky value
+ *   (Haurwitz model). Requires a solar radiation sensor and a sun elevation
+ *   above a minimum threshold (i.e. daytime only).
  * - Model B ("heuristic" / "heuristic+pressure"): a much rougher fallback
  *   based on the dew point depression (temperature - dew point), optionally
  *   refined with the barometric pressure trend if a barometer is present.
@@ -54,13 +56,22 @@ function clearSkyIrradiance(elevationDeg: number): number {
  *
  * @param solarRadWm2 - Measured solar radiation in W/m²
  * @param elevationDeg - Current sun elevation angle in degrees
+ * @param learnedClearSky - Optional site-learned clear-sky reference (W/m²) for this elevation,
+ *   e.g. from `clearskyreference.ts`. When available, it is used instead of the generic Haurwitz
+ *   formula, since it reflects this station's actual local atmospheric conditions rather than an
+ *   idealized reference atmosphere.
  * @returns Cloud cover in percent (0-100), or `undefined` if the sun is too low for a reliable estimate
  */
-export function computeCloudCoverSolar(solarRadWm2: number, elevationDeg: number): number | undefined {
+export function computeCloudCoverSolar(
+    solarRadWm2: number,
+    elevationDeg: number,
+    learnedClearSky?: number,
+): number | undefined {
     if (elevationDeg < MIN_SOLAR_ELEVATION_DEG) {
         return undefined;
     }
-    const clearSky = clearSkyIrradiance(elevationDeg);
+    const clearSky =
+        learnedClearSky !== undefined && learnedClearSky > 0 ? learnedClearSky : clearSkyIrradiance(elevationDeg);
     if (clearSky <= 0) {
         return undefined;
     }

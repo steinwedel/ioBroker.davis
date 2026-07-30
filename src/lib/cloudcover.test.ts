@@ -24,6 +24,18 @@ describe('lib/cloudcover computeCloudCoverSolar', () => {
         expect(computeCloudCoverSolar(50, 1)).to.be.undefined;
         expect(computeCloudCoverSolar(0, -5)).to.be.undefined;
     });
+
+    it('uses a learned clear-sky reference instead of the Haurwitz formula when provided', () => {
+        // A measured value equal to the learned reference should read as 0% cloud, even if it
+        // would have read as (falsely) cloudy against the generic Haurwitz formula.
+        const percent = computeCloudCoverSolar(329, 28.3, 329);
+        expect(percent).to.equal(0);
+    });
+
+    it('reads as cloudier than the learned reference when the reading falls short of it', () => {
+        const percent = computeCloudCoverSolar(200, 28.3, 400);
+        expect(percent).to.be.greaterThan(0);
+    });
 });
 
 describe('lib/cloudcover computeCloudCoverHeuristic', () => {
