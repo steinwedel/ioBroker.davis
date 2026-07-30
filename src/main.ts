@@ -9,6 +9,7 @@ import { discoverWeatherLinkLive } from './lib/discovery';
 import { getSolarElevationDeg } from './lib/sun';
 import { computeWeatherIcon } from './lib/weathericon';
 import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
+import { addSample, type TimedSample } from './lib/movingaverage';
 import { getCompassDirection } from './lib/winddirection';
 import {
     convertRainCount,
@@ -350,6 +351,8 @@ const REALTIME_UDP_PORT = 22222;
 const REALTIME_RENEW_MARGIN_S = 15;
 /** Maximum number of transmitters a WeatherLink Live can track (txid range 1..8, plus 0 as a defensive fallback) */
 const MAX_TRANSMITTER_ID = 8;
+/** Time window over which solar radiation readings are averaged before being used for the cloud cover calculation */
+const SOLAR_RAD_SMOOTHING_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * Validates that a value is a plausible transmitter ID before it is used to build an ioBroker object ID.
@@ -373,6 +376,8 @@ class Davis extends utils.Adapter {
     private isConnected = false;
     /** Site-learned clear-sky reference for the solar cloud cover model, persisted across restarts */
     private clearSkyReference: ClearSkyReferenceMap = {};
+    /** Recent solar radiation readings, used to smooth out momentary dips (e.g. a passing cloud shadow) */
+    private solarRadSamples: TimedSample[] = [];
     private units: UnitSystem = 'imperial';
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
@@ -582,17 +587,25 @@ class Davis extends utils.Adapter {
 
         if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
             const elevationDeg = getSolarElevationDeg(new Date(), this.latitude!, this.longitude!);
+            const now = Date.now();
             if (elevationDeg > 0) {
-                this.clearSkyReference = recordObservation(
-                    this.clearSkyReference,
-                    elevationDeg,
-                    iss.solar_rad,
-                    Date.now(),
-                );
+                // The clear-sky reference is calibrated from the raw (unsmoothed) reading, so a
+                // brief genuinely-clear moment can still be recorded as the true peak for its bucket.
+                this.clearSkyReference = recordObservation(this.clearSkyReference, elevationDeg, iss.solar_rad, now);
                 await this.persistClearSkyReference();
             }
-            const learnedClearSky = getReference(this.clearSkyReference, elevationDeg, Date.now());
-            const percent = computeCloudCoverSolar(iss.solar_rad, elevationDeg, learnedClearSky);
+            // The value fed into the cloud cover calculation itself is smoothed over a short time
+            // window, so a single momentary dip (e.g. a small cloud passing in front of the sun for
+            // under a minute) doesn't swing the reported cloud cover by tens of percentage points.
+            const { samples, average: smoothedSolarRad } = addSample(
+                this.solarRadSamples,
+                iss.solar_rad,
+                now,
+                SOLAR_RAD_SMOOTHING_WINDOW_MS,
+            );
+            this.solarRadSamples = samples;
+            const learnedClearSky = getReference(this.clearSkyReference, elevationDeg, now);
+            const percent = computeCloudCoverSolar(smoothedSolarRad, elevationDeg, learnedClearSky);
             if (percent !== undefined) {
                 result = { percent, model: 'solar' };
             }

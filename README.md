@@ -129,6 +129,10 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+* (steinwedel) **FIXED**: The solar-based cloud cover model now averages solar radiation readings over a 5-minute window before computing the clear-sky index, instead of using only the single most recent reading. A single brief cloud shadow (well under a minute) could otherwise swing the reported cloud cover by tens of percentage points even though the overall sky condition had not changed (observed e.g. 39% instead of ~0% during a momentary dip). The site-learned clear-sky reference calibration itself is unaffected and still uses the raw (unsmoothed) peak reading.
+
 ### 0.0.10 (2026-07-30)
 * (steinwedel) **NEW**: Added `wind.svg`, `sleet.svg` and `hail.svg` to the bundled weather icon set (`admin/img/weathericons/`), covering the full Bright Sky/DWD icon vocabulary for external scripts/widgets that reuse these icons
 
