@@ -117,8 +117,7 @@ For later updates:
 1. Repeat the installation steps above (via Admin UI or `iob url` command) to update the adapter
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 0.0.5 (2026-07-30)
 * (steinwedel) **CHANGED**: Calculated/derived values (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) moved from `sensors.*` into a dedicated `calculated.*` folder, to keep them separate from the raw per-transmitter sensor channels. Existing installations should delete the old `sensors.cloudCover*`/`sensors.weather*` states, as they are no longer updated.
 
 ### 0.0.4 (2026-07-30)

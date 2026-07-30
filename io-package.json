@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "news": {
+      "0.0.5": {
+        "en": "**CHANGED**: Calculated/derived values (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) moved from `sensors.*` into a dedicated `calculated.*` folder, to keep them separate from the raw per-transmitter sensor channels. Existing installations should delete the old `sensors.cloudCover*`/`sensors.weather*` states, as they are no longer updated.",
+        "de": "**VERÄNDERT**: Berechnete/abgeleitete Werte (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) wurden von `sensors.*` in einen dedizierten `calculated.*`-Ordner verschoben, um sie von den rohen per-Sender-Sensorkanälen getrennt zu halten. Bestehende Installationen sollten die alten Zustände „sensors.cloudCover*/„sensors.weather* löschen, da sie nicht mehr aktualisiert werden.",
+        "ru": "** CHANGED**: Расчетные/производные значения (\"cloudCover\", \"cloudCoverModel\", \"weatherCode\", \"weatherState\", \"weatherIcon\") переместились из \"датчиков.*\" в специальную папку \"calculated.*\", чтобы держать их отдельно от сырых каналов датчиков на передатчик. Существующие установки должны удалить старые состояния «sensors.cloudCover*»/«sensors.weather*», поскольку они больше не обновляются.",
+        "pt": "**CHANGED**: Valores calculados/derivados (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) movidos de `sensores.*` para uma pasta dedicada `calculada.*`, para mantê-los separados dos canais de sensores brutos por transmissor. As instalações existentes devem apagar os antigos `sensores.cloudCover*`/`sensores.weather*` estados, uma vez que eles não são mais atualizados.",
+        "nl": "**CHANGED**: Berekende/uitgegeven waarden ( Bestaande installaties moeten de oude .",
+        "fr": "**CHANGED**: Les valeurs calculées/dérivées (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) ont été déplacées de `sensors.*` dans un dossier `calculé.*` dédié, pour les séparer des canaux de capteur bruts par transmetteur. Les installations existantes devraient supprimer les anciens états `sensors.cloudCover*`/`sensors.weather*`, car ils ne sont plus mis à jour.",
+        "it": "**CANGED**: Valori calcolati/derivati (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) spostati da `sensori.*` in una cartella dedicata `calcolata.*`, per tenerli separati dai canali del sensore per-trasmettitore grezzi. Le installazioni esistenti dovrebbero eliminare i vecchi stati `sensori.cloudCover*`/`sensors.weather*`, in quanto non sono più aggiornati.",
+        "es": "**CHANGED**: Calculated/derived values (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) se trasladó de `sensors.*` a una carpeta dedicada `calculada.*`, para mantenerlos separados de los canales de sensores por transmisor crudos. Las instalaciones existentes deben eliminar los viejos `sensors.cloudCover*`/`sensors.weather*` estados, ya que ya no están actualizados.",
+        "pl": "* *CHANGED* *: Obliczone / pochodne wartości ('cloudCover', 'cloudCoverModel', 'weatherCode', 'weatherState', 'weatherIcon') przeniesione z 'sensorów. *do dedykowanego 'obliczonego'.* 'folder, aby oddzielić je od surowych kanałów nadajnika. Istniejące instalacje powinny usunąć stare' sensors.cloudCover *'/' sensors.weather* ', ponieważ nie są już aktualizowane. ",
+        "uk": "**CHANGED***: Обчислення/передачі значень (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) переходять з `sensors.*`````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````` Встановчі установки повинні видалити старі `sensors.cloudCover*`/`sensors.weather*` стани, оскільки вони більше не оновлюються.",
+        "zh-cn": "**CHANGED**:计算值/衍生值( \" 云层 \" 、 \" 云层 \" 、 \" 天气代码 \" 、 \" 天气状态 \" 、 \" 天气Icon \" )从 \" 传感器. \" 移到一个专用的 \" 计算. \" 文件夹,使之与每个传输器的原始传感器通道分开。 现有设施应删除旧的`传感器.cloudCover*`/ ' 传感器.weather*`,因为不再更新."
+      },
       "0.0.4": {
         "en": "Weather icon derived from cloud cover/rain/temperature, cloud cover heuristic unit fix",
         "de": "Wetter-Icon aus Bewölkung/Regen/Temperatur, Einheiten-Fix bei Bewölkungsheuristik",
