@@ -3,6 +3,19 @@
     "name": "davis",
     "version": "0.0.2",
     "news": {
+      "0.0.3": {
+        "en": "Estimated cloud cover from solar radiation or dew point/pressure trend",
+        "de": "Geschätzter Bewölkungsgrad aus Solarstrahlung oder Taupunkt/Drucktrend",
+        "ru": "Оценка облачности по солнечной радиации или точке росы/тренду давления",
+        "pt": "Cobertura de nuvens estimada a partir da radiação solar ou tendência de ponto de orvalho/pressão",
+        "nl": "Geschatte bewolkingsgraad op basis van zonnestraling of dauwpunt/luchtdruktrend",
+        "fr": "Couverture nuageuse estimée à partir du rayonnement solaire ou de la tendance point de rosée/pression",
+        "it": "Copertura nuvolosa stimata dalla radiazione solare o dalla tendenza punto di rugiada/pressione",
+        "es": "Cobertura de nubes estimada a partir de la radiación solar o la tendencia de punto de rocío/presión",
+        "pl": "Szacowane zachmurzenie na podstawie promieniowania słonecznego lub trendu punktu rosy/ciśnienia",
+        "uk": "Оцінка хмарності за сонячною радіацією або трендом точки роси/тиску",
+        "zh-cn": "根据太阳辐射或露点/气压趋势估算云量"
+      },
       "0.0.2": {
         "en": "mDNS discovery, configurable units (metric/imperial), rain depth conversion and new icon",
         "de": "mDNS-Suche, einstellbare Einheiten (metrisch/imperial), Regenmengen-Umrechnung und neues Icon",
