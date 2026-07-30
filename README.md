@@ -125,8 +125,7 @@ Die WeatherLink Live liefert alle Werte grundsätzlich in imperialen Einheiten (
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 0.0.6 (2026-07-30)
 * (steinwedel) **CHANGED**: README komplett überarbeitet: Entwickler-Boilerplate entfernt, echte Nutzerdokumentation (Installation, Konfiguration, Objektstruktur, Bewölkungs-/Wetter-Icon-Modelle, Wettercode-Tabelle) ergänzt
 
 ### 0.0.5 (2026-07-30)

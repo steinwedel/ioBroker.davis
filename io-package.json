@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "news": {
       "0.0.6": {
         "en": "Documentation overhaul, calculated values moved to a dedicated folder",
