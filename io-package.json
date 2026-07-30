@@ -3,6 +3,19 @@
     "name": "davis",
     "version": "0.0.3",
     "news": {
+      "0.0.4": {
+        "en": "Weather icon derived from cloud cover/rain/temperature, cloud cover heuristic unit fix",
+        "de": "Wetter-Icon aus Bewölkung/Regen/Temperatur, Einheiten-Fix bei Bewölkungsheuristik",
+        "ru": "Иконка погоды на основе облачности/дождя/температуры, исправление единиц измерения",
+        "pt": "Ícone do tempo a partir de nuvens/chuva/temperatura, correção de unidades",
+        "nl": "Weericoon op basis van bewolking/regen/temperatuur, eenhedenfix",
+        "fr": "Icône météo dérivée de la nébulosité/pluie/température, correctif d'unités",
+        "it": "Icona meteo derivata da nuvolosità/pioggia/temperatura, correzione unità",
+        "es": "Icono del clima derivado de nubosidad/lluvia/temperatura, corrección de unidades",
+        "pl": "Ikona pogody na podstawie zachmurzenia/deszczu/temperatury, poprawka jednostek",
+        "uk": "Іконка погоди на основі хмарності/дощу/температури, виправлення одиниць",
+        "zh-cn": "根据云量/降雨/温度生成天气图标，修复单位换算"
+      },
       "0.0.3": {
         "en": "Estimated cloud cover from solar radiation or dew point/pressure trend",
         "de": "Geschätzter Bewölkungsgrad aus Solarstrahlung oder Taupunkt/Drucktrend",
