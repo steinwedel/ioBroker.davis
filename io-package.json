@@ -3,6 +3,19 @@
     "name": "davis",
     "version": "0.0.5",
     "news": {
+      "0.0.6": {
+        "en": "Documentation overhaul, calculated values moved to a dedicated folder",
+        "de": "Dokumentation überarbeitet, berechnete Werte in eigenen Ordner verschoben",
+        "ru": "Переработана документация, вычисляемые значения перенесены в отдельную папку",
+        "pt": "Documentação revisada, valores calculados movidos para pasta dedicada",
+        "nl": "Documentatie herzien, berekende waarden verplaatst naar eigen map",
+        "fr": "Documentation révisée, valeurs calculées déplacées dans un dossier dédié",
+        "it": "Documentazione rivista, valori calcolati spostati in una cartella dedicata",
+        "es": "Documentación revisada, valores calculados movidos a una carpeta dedicada",
+        "pl": "Dokumentacja poprawiona, obliczone wartości przeniesione do dedykowanego folderu",
+        "uk": "Оновлено документацію, обчислені значення перенесено в окрему папку",
+        "zh-cn": "文档修订，计算值已移至专用文件夹"
+      },
       "0.0.5": {
         "en": "**CHANGED**: Calculated/derived values (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) moved from `sensors.*` into a dedicated `calculated.*` folder, to keep them separate from the raw per-transmitter sensor channels. Existing installations should delete the old `sensors.cloudCover*`/`sensors.weather*` states, as they are no longer updated.",
         "de": "**VERÄNDERT**: Berechnete/abgeleitete Werte (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) wurden von `sensors.*` in einen dedizierten `calculated.*`-Ordner verschoben, um sie von den rohen per-Sender-Sensorkanälen getrennt zu halten. Bestehende Installationen sollten die alten Zustände „sensors.cloudCover*/„sensors.weather* löschen, da sie nicht mehr aktualisiert werden.",
