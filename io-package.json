@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "news": {
+      "0.0.8": {
+        "en": "**FIXED**: The solar-based cloud cover model now learns a site-specific clear-sky reference per sun elevation angle (persisted in `calculated.clearSkyReference`) instead of relying solely on the generic Haurwitz formula, which could overestimate the theoretically achievable clear-sky irradiance and thus report cloud cover on genuinely clear days (observed e.g. 14% instead of 0% at 28° sun elevation)",
+        "de": "**FEST**: Das solarbasierte Wolkenbedeckungsmodell lernt nun eine ortsspezifische Clear-Sky-Referenz pro Sonnenhöhenwinkel (beharrlich in \"calculated.clearSkyReference\"), anstatt sich ausschließlich auf die generische Haurwitz-Formel zu verlassen, die die theoretisch erreichbare Clear-Sky-Bestrahlungsstärke überschätzen und somit die Wolkenbedeckung an wirklich klaren Tagen melden könnte (beobachtet z.B. 14 %s tatt 0% bei 28° Sonnenhöhe)",
+        "ru": "** Фиксированный**: Модель облачного покрова, основанная на солнечной энергии, теперь изучает специфичную для участка точку отсчета ясного неба на угол возвышения Солнца (сохраняемую в «вычисленной.clearSkyReference») вместо того, чтобы полагаться исключительно на общую формулу Хаурвица, которая могла бы переоценить теоретически достижимое излучение ясного неба и, таким образом, сообщить об облачном покрове в действительно ясные дни (наблюдается, например, 14% вместо 0% при возвышении солнца на 28 °)",
+        "pt": "**FIXED**: O modelo de cobertura de nuvem baseado no sol agora aprende uma referência de céu claro específica do local por ângulo de elevação do sol (persistido em `calculado.clearSkyReference`) em vez de confiar apenas na fórmula genérica de Haurwitz, que poderia superestimar a irradiância de céu claro teoricamente alcançável e, assim, relatar cobertura de nuvem em dias genuinamente claros (observado, por exemplo, 14% em vez de 0% em 28° de elevação solar)",
+        "nl": "** VAST**: Het op zonne-based cloud cover model leert nu een site-specifieke heldere-sky referentie per zonnehoogtehoek (geperst in ..once.clearSkyReference",
+        "fr": "**FIXÉ**: Le modèle de couverture nuageuse basé sur l'énergie solaire apprend maintenant une référence claire-sky spécifique au site par angle d'élévation du soleil (persisté dans `calculé.clearSkyReference`) au lieu de s'appuyer uniquement sur la formule générique de Haurwitz, qui pourrait surestimer l'irradiance claire-sky théoriquement réalisable et rapporter ainsi la couverture nuageuse sur des jours vraiment clairs (observé par exemple 14% au lieu de 0% à 28° d'élévation du soleil)",
+        "it": "**FISSO ** Il modello di copertura cloud a base solare ora impara un riferimento chiaro-sky site-specific per angolo di elevazione del sole (persisted in `calculated.clearSkyReference`) invece di basarsi esclusivamente sulla formula generica di Haurwitz, che potrebbe sopravvalutare l'irraggiamento chiaro-sky raggiungibile teoricamente e quindi riferire la copertura del cloud su giorni sinceramente chiari (observato es.g 14% invece di 0% a 28°",
+        "es": "**FIXED**: El modelo de cubierta de nube basado en solar ahora aprende una referencia clara y específica del sitio por ángulo de elevación del sol (persistido en `calculado.clearSkyReference`) en lugar de depender únicamente de la fórmula genérica Haurwitz, que podría sobreestimar la irradiación clara teóricamente alcanzable y por lo tanto reportar cubierta de nube en días realmente claros (observado por ejemplo 14% en lugar de elevación del 0% a 28°)",
+        "pl": "* *FIXED* * Model pokrycia chmurowego oparty na solarium uczy się teraz o specyficznym dla danego obszaru wskaźniku jasności nieba na kąt uniesienia Słońca (utrzymujący się w 'kalkulatorze. ClearSkyReference') zamiast polegać wyłącznie na formule generycznej Haurwitz, która mogłaby przecenić teoretycznie osiągalne irradiancje na niebie, a tym samym zgłosić obłok chmur w prawdziwie jasnych dniach (obserwowany np. 14% zamiast 0% przy 28 ° wysokości słońca) ",
+        "uk": "**FIXED***: Модель хмарного покриву на основі сонячної хмари тепер дізнається, що сайт специфічний чіткий довідник за кутом висоти сонця (поцілунки в `calculated.clearSkyReference`) замість того, щоб покладатися виключно на генеричну формулу Haurwitz, яка може переоцінювати теоретично різко різкий опромінення і, таким чином, звітувати хмарний покрив на дійсно чітких днів (зберігається наприклад, 14% замість 0% на висоті 28°)",
+        "zh-cn": "(单位:千美元) 基于太阳的云层覆盖模型现在学会了每个太阳高程角度上一个特定地点的晴天参照物(坚持在`计算.clearSkyReference'中),而不是仅仅依赖通用的Haurwitz公式,该公式可以高估理论上可以实现的晴天辐射,从而报告真正晴天的云层覆盖情况(如在28°太阳高程时观察到14%而不是0%)"
+      },
       "0.0.7": {
         "en": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
         "de": "**GEÄNDERT**: Vollständige Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
@@ -80,19 +93,6 @@
         "pl": "Wykrywanie mDNS, konfigurowalne jednostki, przeliczanie opadów i nowa ikona",
         "uk": "Виявлення mDNS, налаштовувані одиниці, перерахунок дощу та нова іконка",
         "zh-cn": "mDNS 发现、可配置单位、降雨量转换和新图标"
-      },
-      "0.0.1": {
-        "en": "initial release",
-        "de": "Erstveröffentlichung",
-        "ru": "Начальная версия",
-        "pt": "lançamento inicial",
-        "nl": "Eerste uitgave",
-        "fr": "Première version",
-        "it": "Versione iniziale",
-        "es": "Versión inicial",
-        "pl": "Pierwsze wydanie",
-        "uk": "Початкова версія",
-        "zh-cn": "首次出版"
       }
     },
     "titleLang": {
