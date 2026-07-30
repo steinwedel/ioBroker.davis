@@ -12,7 +12,7 @@
 
 ## Überblick
 
-Dieser Adapter liest Wetterdaten einer **Davis WeatherLink Live (WLL)** über deren lokale HTTP-API im Heimnetz aus und stellt sie als ioBroker-States bereit. Es wird keine Cloud-Anbindung oder ein Davis-Account benötigt – der Adapter kommuniziert ausschließlich direkt mit dem Gerät im lokalen Netzwerk.
+Dieser Adapter liest Wetterdaten einer **Davis WeatherLink Live 6100 (WLL)** über deren lokale HTTP-API im Heimnetz aus und stellt sie als ioBroker-States bereit. Es wird keine Cloud-Anbindung oder ein Davis-Account benötigt – der Adapter kommuniziert ausschließlich direkt mit dem Gerät im lokalen Netzwerk.
 
 Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Transmittern ausgestattet sein können (z. B. mit oder ohne Solarstrahlungssensor, mit oder ohne Boden-/Blattfeuchte-Sensor, mit oder ohne Barometer), legt der Adapter Objekte **dynamisch** nur für die Sensoren an, die die jeweilige Station tatsächlich meldet.
 
@@ -26,7 +26,7 @@ Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Tr
 
 ## Voraussetzungen
 
-- Eine Davis WeatherLink Live (WLL) im selben lokalen Netzwerk wie der ioBroker-Server
+- Eine Davis WeatherLink Live 6100 (WLL) im selben lokalen Netzwerk wie der ioBroker-Server
 - Node.js ≥ 20 (wird von ioBroker selbst vorgegeben)
 - Für die automatische Geräteerkennung: UDP-Multicast muss im Netzwerk erlaubt sein (in vielen Firmennetzen/VLANs ist das nicht der Fall – dann die IP-Adresse manuell eintragen)
 
@@ -34,8 +34,8 @@ Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Tr
 
 1. Adapterinstanz `davis.0` über die ioBroker-Admin-Oberfläche anlegen.
 2. In der Instanz-Konfiguration entweder:
-   - auf **„Find WeatherLink Live"** klicken, um das Gerät automatisch im Netzwerk zu finden (IP-Adresse und Port werden automatisch eingetragen), oder
-   - die **IP-Adresse** der WeatherLink Live manuell eintragen.
+   - auf **„Find WeatherLink Live 6100"** klicken, um das Gerät automatisch im Netzwerk zu finden (IP-Adresse und Port werden automatisch eingetragen), oder
+   - die **IP-Adresse** der WeatherLink Live 6100 manuell eintragen.
 3. Optional das **Abfrageintervall** (Standard: 20 Sekunden, Minimum 10 Sekunden gemäß Davis-API) und die gewünschten **Einheiten** (metrisch/imperial) anpassen.
 4. Optional den **Echtzeit-Modus** aktivieren, um Wind- und Regendaten deutlich häufiger zu erhalten.
 5. Für die Bewölkungs- und Wetter-Icon-Schätzung: Breiten- und Längengrad müssen unter **Hauptseite → Systemeinstellungen** von ioBroker (nicht in der Adapter-Konfiguration selbst) hinterlegt sein.
@@ -44,9 +44,9 @@ Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Tr
 
 | Einstellung | Beschreibung |
 |---|---|
-| WeatherLink Live IP-Adresse | Lokale IP-Adresse des Geräts, z. B. `192.168.1.50` |
+| WeatherLink Live 6100 IP-Adresse | Lokale IP-Adresse des Geräts, z. B. `192.168.1.50` |
 | Port | TCP-Port der lokalen API (Standard: 80) |
-| „Find WeatherLink Live" | Sucht das Gerät automatisch per mDNS/Bonjour im lokalen Netzwerk |
+| „Find WeatherLink Live 6100" | Sucht das Gerät automatisch per mDNS/Bonjour im lokalen Netzwerk |
 | Abfrageintervall (Sekunden) | Wie oft die aktuellen Werte per HTTP abgefragt werden (Minimum 10s) |
 | Einheiten | Metrisch (°C, km/h, hPa, mm) oder Imperial (°F, mph, inHg, in) |
 | Echtzeit-Modus | Aktiviert den UDP-Broadcast für hochfrequente Wind-/Regendaten |
@@ -57,7 +57,7 @@ Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Tr
 ```
 davis.0
 ├── info
-│   └── connection              Verbindungsstatus zur WeatherLink Live
+│   └── connection              Verbindungsstatus zur WeatherLink Live 6100
 ├── sensors
 │   ├── tx<N>                   Ein Kanal je ISS-Transmitter (Außensensor)
 │   │   ├── temperature, humidity, dewPoint, windChill, heatIndex, ...
@@ -83,7 +83,7 @@ davis.0
 
 ## Bewölkungsgrad-Schätzung (`calculated.cloudCover`)
 
-Da die WeatherLink Live selbst keinen Bewölkungsgrad liefert, wird er aus den vorhandenen Sensordaten geschätzt. Je nach Ausstattung der Station kommt eines von zwei Modellen zum Einsatz:
+Da die WeatherLink Live 6100 selbst keinen Bewölkungsgrad liefert, wird er aus den vorhandenen Sensordaten geschätzt. Je nach Ausstattung der Station kommt eines von zwei Modellen zum Einsatz:
 
 1. **Solarstrahlungsbasiert** (`cloudCoverModel = "solar"`): Vergleicht die gemessene Solarstrahlung mit der theoretischen Klarhimmel-Einstrahlung (Haurwitz-Modell) für den aktuellen Sonnenstand. Voraussetzung: Solarstrahlungssensor vorhanden **und** Breiten-/Längengrad in den ioBroker-Systemeinstellungen hinterlegt **und** die Sonne steht ausreichend hoch (nicht bei Dämmerung/Nacht).
 2. **Taupunkt-Heuristik** (`cloudCoverModel = "heuristic"` bzw. `"heuristic+pressure"`): Deutlich gröbere Schätzung anhand der Taupunkt-Depression (Differenz zwischen Temperatur und Taupunkt), optional verfeinert durch den 3-Stunden-Drucktrend, falls ein Barometer vorhanden ist. Funktioniert auch nachts oder ohne Solarsensor, ist aber nur ein Trendindikator.
@@ -116,7 +116,7 @@ Die Codes orientieren sich an der WMO-Tabelle 4677/4680 (dieselbe Klassifikation
 
 ## Einheiten und Regenmengen
 
-Die WeatherLink Live liefert alle Werte grundsätzlich in imperialen Einheiten (°F, mph, inHg). Bei aktivierter „Metrisch"-Einstellung rechnet der Adapter Temperatur, Windgeschwindigkeit und Luftdruck vor dem Speichern um. Regenwerte werden anhand der vom Gerät gemeldeten Wippengröße (`rain_size`) von rohen Kippzählern in eine physikalische Regenmenge (mm bzw. Zoll) umgerechnet.
+Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einheiten (°F, mph, inHg). Bei aktivierter „Metrisch"-Einstellung rechnet der Adapter Temperatur, Windgeschwindigkeit und Luftdruck vor dem Speichern um. Regenwerte werden anhand der vom Gerät gemeldeten Wippengröße (`rain_size`) von rohen Kippzählern in eine physikalische Regenmenge (mm bzw. Zoll) umgerechnet.
 
 ## Bekannte Einschränkungen
 
@@ -125,6 +125,10 @@ Die WeatherLink Live liefert alle Werte grundsätzlich in imperialen Einheiten (
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+* (steinwedel) **CHANGED**: Vollständiger Gerätename "Davis WeatherLink Live 6100" statt nur "Davis WeatherLink Live" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet
+
 ### 0.0.6 (2026-07-30)
 * (steinwedel) **CHANGED**: README komplett überarbeitet: Entwickler-Boilerplate entfernt, echte Nutzerdokumentation (Installation, Konfiguration, Objektstruktur, Bewölkungs-/Wetter-Icon-Modelle, Wettercode-Tabelle) ergänzt
 

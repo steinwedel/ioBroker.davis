@@ -418,7 +418,7 @@ class Davis extends utils.Adapter {
         });
 
         if (!this.config.host) {
-            this.log.error('No WeatherLink Live IP address configured. Please configure the adapter instance.');
+            this.log.error('No WeatherLink Live 6100 IP address configured. Please configure the adapter instance.');
             await this.setConnected(false);
             return;
         }
@@ -484,7 +484,7 @@ class Davis extends utils.Adapter {
 
             await this.setConnected(true);
         } catch (error) {
-            this.log.error(`Polling WeatherLink Live failed: ${(error as Error).message}`);
+            this.log.error(`Polling WeatherLink Live 6100 failed: ${(error as Error).message}`);
             await this.setConnected(false);
         }
     }
@@ -965,7 +965,7 @@ class Davis extends utils.Adapter {
                 }
                 // Use the first device found; most home networks only have a single WeatherLink Live.
                 const device = devices[0];
-                this.log.info(`Discovered WeatherLink Live at ${device.address}:${device.port} (${device.name})`);
+                this.log.info(`Discovered WeatherLink Live 6100 at ${device.address}:${device.port} (${device.name})`);
                 this.sendTo(
                     obj.from,
                     obj.command,
@@ -977,7 +977,7 @@ class Davis extends utils.Adapter {
                     obj.callback,
                 );
             } catch (error) {
-                this.log.error(`WeatherLink Live discovery failed: ${(error as Error).message}`);
+                this.log.error(`WeatherLink Live 6100 discovery failed: ${(error as Error).message}`);
                 this.sendTo(obj.from, obj.command, { error: 'discoveryFailed' }, obj.callback);
             }
         }

@@ -83,30 +83,30 @@
       }
     },
     "titleLang": {
-      "en": "Davis WeatherLink Live",
-      "de": "Davis WeatherLink Live",
-      "ru": "Дэвис WeatherLink Live",
-      "pt": "Davis WeatherLink ao vivo",
-      "nl": "Davis WeerLink Live",
-      "fr": "Davis WeatherLink en direct",
-      "it": "Davis WeatherLink in diretta",
-      "es": "Davis WeatherLink en vivo",
-      "pl": "Davis WeatherLink na żywo",
-      "uk": "Davis WeatherLink Live",
-      "zh-cn": "戴维斯 WeatherLink 直播"
+      "en": "Davis WeatherLink Live 6100",
+      "de": "Davis WeatherLink Live 6100",
+      "ru": "Дэвис WeatherLink Live 6100",
+      "pt": "Davis WeatherLink Live 6100",
+      "nl": "Davis WeatherLink Live 6100",
+      "fr": "Davis WeatherLink Live 6100",
+      "it": "Davis WeatherLink Live 6100",
+      "es": "Davis WeatherLink Live 6100",
+      "pl": "Davis WeatherLink Live 6100",
+      "uk": "Davis WeatherLink Live 6100",
+      "zh-cn": "戴维斯 WeatherLink Live 6100"
     },
     "desc": {
-      "en": "Adapter for Davis WeatherLink Live weather stations (local API)",
-      "de": "Adapter für Davis WeatherLink Live-Wetterstationen (lokale API)",
-      "ru": "Адаптер для метеостанций Davis WeatherLink Live (локальный API)",
-      "pt": "Adaptador para estações meteorológicas Davis WeatherLink Live (API local)",
-      "nl": "Adapter voor Davis WeatherLink Live weerstations (lokale API)",
-      "fr": "Adaptateur pour stations météo Davis WeatherLink Live (API locale)",
-      "it": "Adattatore per stazioni meteo Davis WeatherLink Live (API locale)",
-      "es": "Adaptador para estaciones meteorológicas Davis WeatherLink Live (API local)",
-      "pl": "Adapter do stacji pogodowych Davis WeatherLink Live (lokalne API)",
-      "uk": "Адаптер для метеостанцій Davis WeatherLink Live (локальний API)",
-      "zh-cn": "Davis WeatherLink 实时气象站适配器（本地 API）"
+      "en": "Adapter for Davis WeatherLink Live 6100 weather stations (local API)",
+      "de": "Adapter für Davis WeatherLink Live 6100-Wetterstationen (lokale API)",
+      "ru": "Адаптер для метеостанций Davis WeatherLink Live 6100 (локальный API)",
+      "pt": "Adaptador para estações meteorológicas Davis WeatherLink Live 6100 (API local)",
+      "nl": "Adapter voor Davis WeatherLink Live 6100 weerstations (lokale API)",
+      "fr": "Adaptateur pour stations météo Davis WeatherLink Live 6100 (API locale)",
+      "it": "Adattatore per stazioni meteo Davis WeatherLink Live 6100 (API locale)",
+      "es": "Adaptador para estaciones meteorológicas Davis WeatherLink Live 6100 (API local)",
+      "pl": "Adapter do stacji pogodowych Davis WeatherLink Live 6100 (lokalne API)",
+      "uk": "Адаптер для метеостанцій Davis WeatherLink Live 6100 (локальний API)",
+      "zh-cn": "Davis WeatherLink Live 6100 实时气象站适配器（本地 API）"
     },
     "authors": [
       "steinwedel <steinwedel@example.com>"

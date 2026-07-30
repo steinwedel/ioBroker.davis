@@ -4,8 +4,8 @@
     "items": {
         "host": {
             "type": "text",
-            "label": "WeatherLink Live IP address",
-            "help": "Local IP address of the WeatherLink Live device, e.g. 192.168.1.50",
+            "label": "WeatherLink Live 6100 IP address",
+            "help": "Local IP address of the WeatherLink Live 6100 device, e.g. 192.168.1.50",
             "newLine": true,
             "xs": 12,
             "sm": 6,
@@ -23,8 +23,8 @@
         },
         "discoverButton": {
             "type": "sendTo",
-            "label": "Find WeatherLink Live",
-            "help": "Searches the local network for a WeatherLink Live via mDNS/Bonjour and fills in its IP address and port automatically",
+            "label": "Find WeatherLink Live 6100",
+            "help": "Searches the local network for a WeatherLink Live 6100 via mDNS/Bonjour and fills in its IP address and port automatically",
             "command": "discoverWLL",
             "jsonData": "{}",
             "useNative": true,
@@ -32,10 +32,10 @@
             "icon": "search",
             "variant": "outlined",
             "result": {
-                "found": "Found WeatherLink Live at %s"
+                "found": "Found WeatherLink Live 6100 at %s"
             },
             "error": {
-                "notFound": "No WeatherLink Live found on the local network. Make sure the device and this ioBroker host are on the same network and multicast is not blocked, then enter the IP address manually.",
+                "notFound": "No WeatherLink Live 6100 found on the local network. Make sure the device and this ioBroker host are on the same network and multicast is not blocked, then enter the IP address manually.",
                 "discoveryFailed": "Discovery failed, see the adapter log for details."
             },
             "xs": 12,
@@ -45,7 +45,7 @@
         "pollInterval": {
             "type": "number",
             "label": "Poll interval (seconds)",
-            "help": "Minimum 10 seconds as required by the WeatherLink Live Local API",
+            "help": "Minimum 10 seconds as required by the WeatherLink Live 6100 Local API",
             "min": 10,
             "max": 3600,
             "default": 20,
@@ -57,7 +57,7 @@
         "units": {
             "type": "select",
             "label": "Units",
-            "help": "The WeatherLink Live always reports values in imperial units; select \"Metric\" to convert temperature (\u00b0C), wind speed (km/h) and pressure (hPa) before storing them",
+            "help": "The WeatherLink Live 6100 always reports values in imperial units; select \"Metric\" to convert temperature (\u00b0C), wind speed (km/h) and pressure (hPa) before storing them",
             "options": [
                 { "value": "metric", "label": "Metric (\u00b0C, km/h, hPa)" },
                 { "value": "imperial", "label": "Imperial (\u00b0F, mph, inHg)" }
@@ -84,7 +84,7 @@
         "realtimeEnabled": {
             "type": "checkbox",
             "label": "Enable real-time mode (UDP broadcast)",
-            "help": "Requests the WeatherLink Live to broadcast wind and rain data every 2.5s over UDP",
+            "help": "Requests the WeatherLink Live 6100 to broadcast wind and rain data every 2.5s over UDP",
             "newLine": true,
             "xs": 12,
             "sm": 6,

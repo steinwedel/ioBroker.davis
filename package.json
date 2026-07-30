@@ -1,7 +1,7 @@
 {
   "name": "iobroker.davis",
   "version": "0.0.6",
-  "description": "Adapter for Davis WeatherLink Live weather stations (local API)",
+  "description": "Adapter for Davis WeatherLink Live 6100 weather stations (local API)",
   "author": {
     "name": "steinwedel",
     "email": "steinwedel@example.com"
