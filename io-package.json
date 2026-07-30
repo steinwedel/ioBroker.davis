@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "news": {
       "0.0.3": {
         "en": "Estimated cloud cover from solar radiation or dew point/pressure trend",
@@ -108,16 +108,16 @@
       }
     ]
   },
-    "native": {
-        "host": "",
-        "port": 80,
-        "pollInterval": 20,
-        "units": "metric",
-        "latitude": 0,
-        "longitude": 0,
-        "realtimeEnabled": false,
-        "realtimeDuration": 90
-    },
+  "native": {
+    "host": "",
+    "port": 80,
+    "pollInterval": 20,
+    "units": "metric",
+    "latitude": 0,
+    "longitude": 0,
+    "realtimeEnabled": false,
+    "realtimeDuration": 90
+  },
   "objects": [],
   "instanceObjects": []
 }

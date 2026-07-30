@@ -117,8 +117,7 @@ For later updates:
 1. Repeat the installation steps above (via Admin UI or `iob url` command) to update the adapter
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 0.0.3 (2026-07-30)
 * (steinwedel) **NEW**: Estimated cloud cover (`sensors.cloudCover`, `sensors.cloudCoverModel`), using a solar-radiation clear-sky index when a solar sensor and location (latitude/longitude) are configured, falling back to a rougher dew-point-based heuristic (optionally refined with the barometric pressure trend if a barometer is present) otherwise. No value is created if neither model's required sensors are present.
 
 ### 0.0.2 (2026-07-29)
