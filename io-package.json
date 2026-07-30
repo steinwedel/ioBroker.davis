@@ -3,6 +3,19 @@
     "name": "davis",
     "version": "0.0.8",
     "news": {
+      "0.0.9": {
+        "en": "Wind direction as compass abbreviation (windDirLastText)",
+        "de": "Windrichtung als Kompass-Abkürzung (windDirLastText)",
+        "ru": "Направление ветра в виде компасного сокращения",
+        "pt": "Direção do vento como abreviação de bússola",
+        "nl": "Windrichting als kompasafkorting",
+        "fr": "Direction du vent sous forme d'abréviation de boussole",
+        "it": "Direzione del vento come abbreviazione bussola",
+        "es": "Dirección del viento como abreviatura de brújula",
+        "pl": "Kierunek wiatru jako skrót kompasowy",
+        "uk": "Напрямок ветру у вигляді компасного скорочення",
+        "zh-cn": "风向以指南针缩写表示"
+      },
       "0.0.8": {
         "en": "**FIXED**: The solar-based cloud cover model now learns a site-specific clear-sky reference per sun elevation angle (persisted in `calculated.clearSkyReference`) instead of relying solely on the generic Haurwitz formula, which could overestimate the theoretically achievable clear-sky irradiance and thus report cloud cover on genuinely clear days (observed e.g. 14% instead of 0% at 28° sun elevation)",
         "de": "**FEST**: Das solarbasierte Wolkenbedeckungsmodell lernt nun eine ortsspezifische Clear-Sky-Referenz pro Sonnenhöhenwinkel (beharrlich in \"calculated.clearSkyReference\"), anstatt sich ausschließlich auf die generische Haurwitz-Formel zu verlassen, die die theoretisch erreichbare Clear-Sky-Bestrahlungsstärke überschätzen und somit die Wolkenbedeckung an wirklich klaren Tagen melden könnte (beobachtet z.B. 14 %s tatt 0% bei 28° Sonnenhöhe)",
