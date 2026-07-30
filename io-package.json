@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "news": {
+      "0.0.7": {
+        "en": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "de": "**GEÄNDERT**: Vollständige Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "ru": "** CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" в Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "pt": "** CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" em Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "nl": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" staat nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "fr": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" dans Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "it": "** CANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "es": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" en Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "pl": "* *CHANGED* *: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Administra- UI- Texten und Adapter - Beschreibung verwendet ",
+        "uk": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" в Документації, Admin-UI-Texten und Adapter-Beschreibung verwendet",
+        "zh-cn": "**CHANGED**:沃尔斯特·恩迪格尔·Gerätename \"Davis WeatherLink Live 6100\" start nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet"
+      },
       "0.0.6": {
         "en": "Documentation overhaul, calculated values moved to a dedicated folder",
         "de": "Dokumentation überarbeitet, berechnete Werte in eigenen Ordner verschoben",

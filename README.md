@@ -125,8 +125,7 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
-
-### **WORK IN PROGRESS**
+### 0.0.7 (2026-07-30)
 * (steinwedel) **CHANGED**: Vollständiger Gerätename "Davis WeatherLink Live 6100" statt nur "Davis WeatherLink Live" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet
 
 ### 0.0.6 (2026-07-30)
