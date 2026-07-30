@@ -4,7 +4,9 @@
 
 import * as dgram from 'node:dgram';
 import * as utils from '@iobroker/adapter-core';
+import { computeCloudCoverHeuristic, computeCloudCoverSolar, type CloudCoverModel } from './lib/cloudcover';
 import { discoverWeatherLinkLive } from './lib/discovery';
+import { getSolarElevationDeg } from './lib/sun';
 import {
     convertRainCount,
     convertValue,
@@ -462,6 +464,7 @@ class Davis extends utils.Adapter {
             for (const condition of response.data.conditions) {
                 await this.processCondition(condition);
             }
+            await this.updateCloudCover(response.data.conditions);
 
             await this.setConnected(true);
         } catch (error) {
@@ -513,6 +516,106 @@ class Davis extends utils.Adapter {
             default:
                 this.log.debug(`Unknown data_structure_type: ${JSON.stringify(condition)}`);
         }
+    }
+
+    /**
+     * Estimates the cloud cover from the current poll's condition records and writes it to
+     * `sensors.cloudCover` / `sensors.cloudCoverModel`, using whichever model the currently
+     * installed sensors support:
+     * - Model A ("solar"): from solar radiation + sun elevation, if a solar sensor and this
+     *   adapter's configured latitude/longitude are available and the sun is high enough.
+     * - Model B ("heuristic" / "heuristic+pressure"): from the dew point depression, optionally
+     *   refined with the barometric pressure trend if a barometer channel is present.
+     * If neither model has the sensors it needs, no state is created/updated at all.
+     *
+     * @param conditions - All condition records from the current poll
+     */
+    private async updateCloudCover(conditions: Condition[]): Promise<void> {
+        const iss = conditions.find((c): c is IssCondition => c.data_structure_type === DataStructureType.ISS);
+        const barometer = conditions.find(
+            (c): c is LssBarCondition => c.data_structure_type === DataStructureType.LssBar,
+        );
+
+        let result: { percent: number; model: CloudCoverModel } | undefined;
+
+        if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
+            const elevationDeg = getSolarElevationDeg(new Date(), this.config.latitude, this.config.longitude);
+            const percent = computeCloudCoverSolar(iss.solar_rad, elevationDeg);
+            if (percent !== undefined) {
+                result = { percent, model: 'solar' };
+            }
+        }
+
+        if (
+            !result &&
+            iss?.temp !== null &&
+            iss?.temp !== undefined &&
+            iss?.dew_point !== null &&
+            iss?.dew_point !== undefined
+        ) {
+            const barTrend = barometer?.bar_trend ?? undefined;
+            result = computeCloudCoverHeuristic(iss.temp, iss.dew_point, barTrend ?? undefined);
+        }
+
+        if (!result) {
+            // Neither model has the sensors it needs for this poll (e.g. no ISS data at all yet,
+            // or solar sensor present but sun too low and no dew point available as fallback).
+            return;
+        }
+
+        if (!this.knownChannels.has('sensors.cloudCover')) {
+            await this.setObjectNotExistsAsync('sensors.cloudCover', {
+                type: 'state',
+                common: {
+                    name: 'Estimated cloud cover',
+                    type: 'number',
+                    role: 'value',
+                    unit: '%',
+                    min: 0,
+                    max: 100,
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            await this.setObjectNotExistsAsync('sensors.cloudCoverModel', {
+                type: 'state',
+                common: {
+                    name: 'Cloud cover estimation model used',
+                    type: 'string',
+                    role: 'text',
+                    states: {
+                        solar: 'Solar radiation (clear-sky index)',
+                        heuristic: 'Dew point depression (rough estimate)',
+                        'heuristic+pressure': 'Dew point depression + pressure trend (rough estimate)',
+                    },
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            this.knownChannels.add('sensors.cloudCover');
+        }
+
+        await this.setStateAsync('sensors.cloudCover', { val: result.percent, ack: true });
+        await this.setStateAsync('sensors.cloudCoverModel', { val: result.model, ack: true });
+    }
+
+    /**
+     * Checks whether a usable latitude/longitude has been configured (required for Model A).
+     *
+     * @returns `true` if both coordinates are configured and within their valid ranges
+     */
+    private hasValidLocation(): boolean {
+        const lat = Number(this.config.latitude);
+        const lon = Number(this.config.longitude);
+        return (
+            Number.isFinite(lat) &&
+            Number.isFinite(lon) &&
+            !(lat === 0 && lon === 0) &&
+            Math.abs(lat) <= 90 &&
+            Math.abs(lon) <= 180
+        );
     }
 
     /**
