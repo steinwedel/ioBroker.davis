@@ -1,7 +1,7 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "news": {
       "0.0.4": {
         "en": "Weather icon derived from cloud cover/rain/temperature, cloud cover heuristic unit fix",
