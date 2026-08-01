@@ -349,6 +349,8 @@ const HTTP_TIMEOUT_MS = 8000;
 const REALTIME_UDP_PORT = 22222;
 /** Renew the real-time broadcast request this many seconds before it expires */
 const REALTIME_RENEW_MARGIN_S = 15;
+/** Number of consecutive failed real-time activation attempts before a warning is logged, instead of just a debug message */
+const REALTIME_ACTIVATION_WARN_THRESHOLD = 3;
 /** Maximum number of transmitters a WeatherLink Live can track (txid range 1..8, plus 0 as a defensive fallback) */
 const MAX_TRANSMITTER_ID = 8;
 /** Time window over which solar radiation readings are averaged before being used for the cloud cover calculation */
@@ -370,6 +372,8 @@ function validateTxId(txid: unknown): number | undefined {
 class Davis extends utils.Adapter {
     private pollTimer: ReturnType<typeof this.setInterval> | undefined;
     private realtimeRenewTimer: ReturnType<typeof this.setTimeout> | undefined;
+    /** Number of consecutive failed real-time activation attempts, used to avoid logging a warning for every transient blip */
+    private realtimeActivationFailures = 0;
     private udpSocket: dgram.Socket | undefined;
     private readonly knownChannels = new Set<string>();
     private readonly knownStates = new Set<string>();
@@ -960,13 +964,20 @@ class Davis extends utils.Adapter {
             this.log.debug(
                 `Real-time broadcast active for ${grantedDuration}s on port ${response.data.broadcast_port}`,
             );
+            this.realtimeActivationFailures = 0;
 
             const renewInMs = Math.max(5, grantedDuration - REALTIME_RENEW_MARGIN_S) * 1000;
             this.realtimeRenewTimer = this.setTimeout(() => {
                 void this.activateRealtime();
             }, renewInMs);
         } catch (error) {
-            this.log.warn(`Could not activate real-time broadcast, retrying in 30s: ${(error as Error).message}`);
+            this.realtimeActivationFailures++;
+            const message = `Could not activate real-time broadcast, retrying in 30s: ${(error as Error).message}`;
+            if (this.realtimeActivationFailures >= REALTIME_ACTIVATION_WARN_THRESHOLD) {
+                this.log.warn(`${message} (failed ${this.realtimeActivationFailures} times in a row)`);
+            } else {
+                this.log.debug(message);
+            }
             this.realtimeRenewTimer = this.setTimeout(() => {
                 void this.activateRealtime();
             }, 30000);
