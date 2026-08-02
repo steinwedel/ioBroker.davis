@@ -44,9 +44,69 @@ describe('lib/weathericon computeWeatherIcon', () => {
         expect(result?.state).to.equal('thunderstorm');
     });
 
-    it('does not classify heavy rain as thunderstorm without cloud cover confirmation', () => {
+    it('classifies heavy rain as heavyRain without cloud cover confirmation of a thunderstorm', () => {
         const result = computeWeatherIcon({ rainRateLast: 10, tempC: 20, isDay: true });
+        expect(result?.state).to.equal('heavyRain');
+    });
+
+    it('classifies heavy rain plus a gust-front spike and pressure drop as thunderstorm even without cloud cover data', () => {
+        const result = computeWeatherIcon({
+            rainRateLast: 10,
+            tempC: 20,
+            windGustKmh: 45,
+            windAvgKmh: 15,
+            barTrendHpa: -2,
+            isDay: true,
+        });
+        expect(result?.state).to.equal('thunderstorm');
+    });
+
+    it('does not classify heavy rain as thunderstorm when only one of several available signals fires', () => {
+        const result = computeWeatherIcon({
+            rainRateLast: 10,
+            tempC: 20,
+            cloudCoverPercent: 90,
+            windGustKmh: 20,
+            windAvgKmh: 15,
+            barTrendHpa: 0.5,
+            isDay: true,
+        });
+        expect(result?.state).to.equal('heavyRain');
+    });
+
+    it('classifies heavy rain as thunderstorm when two of several available signals agree', () => {
+        const result = computeWeatherIcon({
+            rainRateLast: 10,
+            tempC: 20,
+            cloudCoverPercent: 90,
+            windGustKmh: 45,
+            windAvgKmh: 15,
+            barTrendHpa: 0.5,
+            isDay: true,
+        });
+        expect(result?.state).to.equal('thunderstorm');
+    });
+
+    it('classifies light rain as drizzle', () => {
+        const result = computeWeatherIcon({ cloudCoverPercent: 80, rainRateLast: 0.3, tempC: 10, isDay: true });
+        expect(result?.state).to.equal('drizzle');
+    });
+
+    it('classifies rain near freezing as sleet', () => {
+        const result = computeWeatherIcon({ cloudCoverPercent: 80, rainRateLast: 1, tempC: 1, isDay: true });
+        expect(result?.state).to.equal('sleet');
+        expect(result?.iconPath).to.equal('img/weathericons/sleet.svg');
+    });
+
+    it('classifies heavy snowfall as heavySnow', () => {
+        const result = computeWeatherIcon({ cloudCoverPercent: 90, rainRateLast: 5, tempC: -5, isDay: true });
+        expect(result?.state).to.equal('heavySnow');
+    });
+
+    it('uses a partly-cloudy rain icon variant when skies are not (near-)overcast', () => {
+        const result = computeWeatherIcon({ cloudCoverPercent: 30, rainRateLast: 1, tempC: 10, isDay: true });
         expect(result?.state).to.equal('rain');
+        expect(result?.iconPath).to.equal('img/weathericons/partly-cloudy-day-rain.svg');
     });
 
     it('classifies calm, near-saturated conditions without rain as fog', () => {

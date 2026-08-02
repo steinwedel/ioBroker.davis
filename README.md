@@ -60,28 +60,66 @@ davis.0
 │   └── connection              Verbindungsstatus zur WeatherLink Live 6100
 ├── sensors
 │   ├── tx<N>                   Ein Kanal je ISS-Transmitter (Außensensor)
-│   │   ├── temperature, humidity, dewPoint, windChill, heatIndex, ...
-│   │   ├── windSpeedLast, windDirLast, windDirLastText, windSpeedAvg10Min, windSpeedHi10Min
-│   │   ├── rainRateLast, rainfall15Min, rainfallDaily, rainfallMonthly, rainfallYear, rainStorm
-│   │   ├── solarRad, uvIndex                (nur falls Solarsensor vorhanden)
+│   │   ├── temperature, temperatureFrostWarning, temperature{Day,Month,Year,Absolute}{Min,Max}[Time]
+│   │   ├── humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time]
+│   │   ├── dewPoint, dewPointText, dewPoint{Day,Month,Year,Absolute}{Min,Max}[Time], wetBulb, windChill
+│   │   ├── heatIndex, heatIndexText, heatIndex{Day,Month,Year,Absolute}{Min,Max}[Time], thwIndex, thswIndex, ...
+│   │   ├── windSpeedLast, windSpeedLast{Day,Month,Year,Absolute}{Min,Max}[Time]
+│   │   ├── windDirLast, windDirLastText, windDirLastSpread5Min, windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
+│   │   ├── windSpeedHi2Min, windDirHi2Min, windDirHi2MinText, windSpeedHi10Min, windDirHi10Min, windDirHi10MinText
+│   │   ├── rainRateLast, rainRateLastText, rainRateHi, rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
+│   │   ├── rainfallDaily, rainfallMonthly, rainfallYear
+│   │   ├── rainStorm, rainStormStartAt, rainStormLast, rainStormLastStartAt, rainStormLastEndAt
+│   │   ├── solarRad, solarRad{Day,Month,Year,Absolute}{Min,Max}[Time]                    (nur falls Solarsensor vorhanden)
+│   │   ├── uvIndex, uvIndexText, uvIndex{Day,Month,Year,Absolute}{Min,Max}[Time]         (nur falls Solarsensor vorhanden)
 │   │   └── lowBattery, receptionState
 │   ├── soilLeaf<N>              Ein Kanal je Boden-/Blattfeuchte-Transmitter (falls vorhanden)
 │   │   └── soilTemp1-4, soilMoisture1-4, leafWetness1-2, lowBattery
 │   ├── barometer                Nur falls ein Barometer-Sensor vorhanden ist
-│   │   └── seaLevel, absolute, trend
+│   │   └── seaLevel, seaLevel{Day,Month,Year,Absolute}{Min,Max}[Time], absolute, trend
 │   └── inside                   Nur falls ein Innensensor vorhanden ist
-│       └── temperature, humidity, dewPoint, heatIndex
+│       └── temperature, temperature{Day,Month,Year,Absolute}{Min,Max}[Time], humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time], dewPoint, heatIndex
 └── calculated
     ├── cloudCover                Geschätzter Bewölkungsgrad in % (0-100)
     ├── cloudCoverModel           Welches Modell verwendet wurde (siehe unten)
     ├── weatherCode               Numerischer Wettercode (siehe Tabelle unten)
     ├── weatherState              Sprechender Bezeichner des Wetterzustands
-    └── weatherIcon               Pfad zum passenden Wetter-Icon (SVG)
+    ├── weatherIcon               Pfad zum passenden Wetter-Icon (SVG)
+    └── evapotranspiration        Geschätzte Referenz-Verdunstung (ETo) des laufenden Tages in mm/Tag
 ```
 
 **Wichtig:** Ein Kanal/State wird nur angelegt, wenn die Station den entsprechenden Sensor tatsächlich meldet. Eine Station ohne Solarstrahlungssensor bekommt z. B. keine `solarRad`/`uvIndex`-States, und ohne Barometer entsteht kein `sensors.barometer`-Kanal. Ebenso werden die `calculated.*`-States nur angelegt, wenn genügend Sensordaten für mindestens eine der unten beschriebenen Berechnungsmethoden vorhanden sind.
 
-`windDirLastText` enthält die aktuelle Windrichtung als 16-teilige Kompass-Abkürzung (z. B. `N`, `NNO`, `O`, `SSW`, …), abgeleitet aus `windDirLast` in Grad.
+`windDirLastText`, `windDirAvg10MinText`, `windDirHi2MinText` und `windDirHi10MinText` enthalten die jeweilige Windrichtung als 16-teilige Kompass-Abkürzung (z. B. `N`, `NNO`, `O`, `SSW`, …), abgeleitet aus `windDirLast`/`windDirAvg10Min`/`windDirHi2Min`/`windDirHi10Min` in Grad.
+
+`windDirLastSpread5Min` enthält den Öffnungswinkel (die Winkelspanne) der Windrichtung der letzten 5 Minuten in Grad – also wie stark die Windrichtung in diesem Zeitraum "gependelt" hat. Der Wert wird bei jedem Poll aus einem laufend mitgeführten, gleitenden 5-Minuten-Fenster der letzten Windrichtungs-Messwerte neu berechnet (nicht erst, nachdem 5 Minuten vergangen sind – schon der erste Messwert ergibt sofort einen Wert von 0°, und der Öffnungswinkel wächst dann kontinuierlich mit jeder neuen Messung, bis das 5-Minuten-Fenster vollständig gefüllt ist). Ein Beispiel: Werte von 350°, 0° und 10° innerhalb der letzten 5 Minuten ergeben einen Öffnungswinkel von 20° (nicht 340°, da die 0°/360°-Grenze korrekt berücksichtigt wird). Dieses Fenster wird rein im Arbeitsspeicher gehalten und beginnt nach einem Adapter-Neustart wieder bei 0 – im Gegensatz zu den Tages-/Monats-/Jahres-/Absolut-Minimal-/Maximalwerten (siehe unten) ist das für einen reinen 5-Minuten-Indikator unproblematisch.
+
+`uvIndexText` enthält die UV-Risikokategorie nach der WHO/WMO-Skala (`Niedrig`, `Mäßig`, `Hoch`, `Sehr hoch`, `Extrem`), abgeleitet aus `uvIndex`.
+
+`rainRateLastText` enthält die Niederschlagsintensität nach der WMO/NWS-Skala (`Kein Niederschlag`, `Leicht`, `Mäßig`, `Stark`, `Sehr stark`), abgeleitet aus `rainRateLast`.
+
+`heatIndexText` enthält die Hitzewarnkategorie nach der NWS-Heat-Index-Skala (`Keine`, `Vorsicht`, `Erhöhte Vorsicht`, `Gefahr`, `Extreme Gefahr`), abgeleitet aus `heatIndex`.
+
+`dewPointText` enthält die Schwüle-/Komfortkategorie nach der NOAA-Taupunkt-Skala (`Trocken`, `Angenehm`, `Schwül`, `Sehr schwül`), abgeleitet aus `dewPoint`.
+
+`temperatureFrostWarning` ist `true`, sobald die aktuelle Temperatur bei oder unter 0 °C liegt (Frost-/Eisbildungsrisiko).
+
+`rainStormStartAt`, `rainStormLastStartAt` und `rainStormLastEndAt` enthalten den jeweiligen Zeitpunkt als ISO-8601-Zeitstempel (z. B. `2026-08-02T00:15:00.000Z`), umgerechnet aus dem von der Station gelieferten UNIX-Zeitstempel.
+
+## Minimal-/Maximalwerte (`<feld>{Day,Month,Year,Absolute}{Min,Max}` / `...Time`)
+
+Für die tatsächlich gemessenen Sensorwerte (Temperatur, Luftfeuchte, Taupunkt, Hitzeindex, Windgeschwindigkeit, Solarstrahlung, UV-Index, Luftdruck – jeweils außen wie innen) werden zusätzlich zum aktuellen Wert automatisch die Minimal- und Maximalwerte für den laufenden Tag, den laufenden Monat, das laufende Jahr sowie seit Installation des Adapters ("Absolute") mitgeführt. Für jede dieser acht Kombinationen (4 Zeiträume × Min/Max) gibt es zwei States:
+
+- `<feld>DayMin`, `<feld>MonthMin`, `<feld>YearMin`, `<feld>AbsoluteMin` (und analog `...Max`) – der jeweilige Extremwert, in der aktuell eingestellten Anzeigeeinheit.
+- `<feld>DayMinTime`, `<feld>MonthMinTime`, `<feld>YearMinTime`, `<feld>AbsoluteMinTime` (und analog `...MaxTime`) – der Zeitpunkt, zu dem dieser Extremwert gemessen wurde, als ISO-8601-Zeitstempel.
+
+Beispiel: `sensors.tx1.temperatureDayMax` = `28.4` und `sensors.tx1.temperatureDayMaxTime` = `2026-08-02T15:42:00.000Z` bedeutet: Die höchste heute gemessene Temperatur betrug 28,4 °C, gemessen um 15:42 Uhr UTC.
+
+Tag/Monat/Jahr-Buckets setzen sich beim jeweiligen Kalenderwechsel automatisch zurück (lokale Zeit des Systems, auf dem ioBroker läuft); der "Absolute"-Wert wird nie zurückgesetzt und bleibt über Adapter-Neustarts hinweg erhalten (die Werte werden aus den bestehenden States rekonstruiert). **Hinweis:** Da die Werte in der jeweils aktuell eingestellten Anzeigeeinheit gespeichert werden, führt ein nachträglicher Wechsel der Einheit (Metrisch/Imperial) in den Adaptereinstellungen dazu, dass bereits erfasste Extremwerte weiterhin in der zum Zeitpunkt ihrer Messung gültigen Einheit angezeigt werden.
+
+## Verdunstungsschätzung (`calculated.evapotranspiration`)
+
+Aus der heutigen minimalen und maximalen Außentemperatur (siehe oben) sowie dem in den ioBroker-Systemeinstellungen hinterlegten Breitengrad wird mit der vereinfachten Hargreaves-Samani-Gleichung eine Referenz-Verdunstung (ETo, mm/Tag) geschätzt – der in Bewässerungssystemen gängige Kennwert für den Wasserbedarf von Pflanzen. Die Methode kommt ohne Feuchte-, Wind- oder direkte Strahlungsmessung aus und ist damit deutlich einfacher als das vollständige FAO-56-Penman-Monteith-Verfahren, aber auch entsprechend ungenauer (üblicherweise ±15-20 % Abweichung bei Tagessummen). Voraussetzung: Standort (Breiten-/Längengrad) in den ioBroker-Systemeinstellungen hinterlegt **und** mindestens eine Temperaturmessung für den laufenden Tag vorhanden – der Schätzwert wird über den Tag hinweg genauer, je größer die tatsächlich erfasste Temperaturspanne (Tagesminimum/-maximum) wird.
 
 ## Bewölkungsgrad-Schätzung (`calculated.cloudCover`)
 
@@ -110,11 +148,17 @@ Die Icon-Grafiken sind ein Ausschnitt aus [Meteocons](https://github.com/basmili
 | 3 | `cloudy` | Bewölkt (Bewölkung ≤ 90 %) |
 | 3 | `overcast` | Bedeckt (Bewölkung > 90 %) |
 | 45 | `fog` | Nebel (Taupunkt-Depression ≤ 0,5 °C bei wenig Wind) |
+| 51 | `drizzle` | Leichter Niederschlag (Regenrate ≤ 0,5 mm/h) |
 | 61 | `rain` | Regen |
-| 71 | `snow` | Schnee (Regen bei Temperatur ≤ 1 °C) |
-| 95 | `thunderstorm` | Gewitter-Verdacht (starker Regen bei nahezu bedecktem Himmel) |
+| 65 | `heavyRain` | Starker Regen (Regenrate ≥ 4 mm/h) ohne bedeckten Himmel als Gewitterbestätigung |
+| 68 | `sleet` | Schneeregen/gefrierender Regen (Regen bei Temperatur zwischen 0 °C und 2 °C) |
+| 71 | `snow` | Schnee (Regen bei Temperatur ≤ 0 °C) |
+| 75 | `heavySnow` | Starker Schneefall (Regenrate ≥ 2 mm/h bei Temperatur ≤ 0 °C) |
+| 95 | `thunderstorm` | Gewitter-Verdacht (starker Regen plus mindestens ein bzw. bei mehreren verfügbaren Signalen mindestens zwei übereinstimmende Indizien: nahezu bedeckter Himmel, Böenfront-Windspitze oder starker Druckabfall) |
 
-Die Codes orientieren sich an der WMO-Tabelle 4677/4680 (dieselbe Klassifikation, die auch DWD-MOSMIX-Daten zugrunde liegt), sind aber auf die aus einer einzelnen Momentaufnahme zuverlässig ableitbaren Kategorien reduziert. Feinere Abstufungen der internationalen Tabelle (z. B. „Gewitter in der letzten Stunde, aktuell vorbei") lassen sich aus reinen Stationsmessungen nicht bestimmen. Die Kategorien `cloudy` und `overcast` teilen sich den WMO-Code 3, da die klassische Tabelle dafür keine getrennten Codes vorsieht – zur Unterscheidung dient der `weatherState`-Text bzw. das jeweilige Icon.
+Die Codes orientieren sich an der WMO-Tabelle 4677/4680 (dieselbe Klassifikation, die auch DWD-MOSMIX-Daten zugrunde liegt), sind aber auf die aus einer einzelnen Momentaufnahme zuverlässig ableitbaren Kategorien reduziert. Feinere Abstufungen der internationalen Tabelle (z. B. „Gewitter in der letzten Stunde, aktuell vorbei" oder eine sichere Unterscheidung zwischen Schneeregen und gefrierendem Regen) lassen sich aus reinen Stationsmessungen nicht bestimmen. Die Kategorien `cloudy` und `overcast` teilen sich den WMO-Code 3, da die klassische Tabelle dafür keine getrennten Codes vorsieht – zur Unterscheidung dient der `weatherState`-Text bzw. das jeweilige Icon. Bei Niederschlag ohne (nahezu) bedeckten Himmel wird zusätzlich eine „teilweise bewölkt + Niederschlag"-Icon-Variante verwendet, sofern vorhanden.
+
+Die WeatherLink Live 6100 unterstützt (im Gegensatz zur älteren Vantage Pro2/Vue-Serie oder der WeatherLink-Cloud/AirLink) keinen Blitzsensor, Gewitter können daher nie direkt erkannt werden, sondern nur anhand begleitender Indizien vermutet werden: starker Regen plus mindestens ein bestätigendes Signal (nahezu bedeckter Himmel, ein Böenfront-Windsprung zwischen der 2-Minuten-Spitze und dem 10-Minuten-Mittelwind, oder ein starker 3-Stunden-Druckabfall am Barometer). Sind mehrere dieser Signale verfügbar, müssen mindestens zwei übereinstimmen, damit ein einzelnes mehrdeutiges Signal (z. B. nur ein bedeckter Himmel, der auch bei gewöhnlichem Landregen auftritt) nicht allein ausreicht.
 
 `calculated.weatherCode`/`weatherIcon`/`weatherState` werden nur angelegt, wenn mindestens der Bewölkungsgrad **oder** eine aktive Regenmessung vorliegt.
 
@@ -129,6 +173,24 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+## **WORK IN PROGRESS**
+* (steinwedel) **NEW**: `sensors.tx<N>.windDirLastSpread5Min` - continuously recomputed angular spread ("opening angle") of the wind direction over the last 5 minutes, correctly handling the 0°/360° wrap-around; kept in an in-memory rolling window so it reflects the actual last 5 minutes on every poll rather than only becoming available after a full 5 minutes have elapsed
+* (steinwedel) **ENHANCED**: Simplified weather icon classification now distinguishes more WMO-inspired conditions from the existing sensor data: `drizzle`/`heavyRain` by rain rate, `sleet` for precipitation near freezing (0-2 °C), and `heavySnow` for higher snow rates. Precipitation with a non-overcast sky now uses the bundled "partly cloudy + rain/snow" icon variants instead of the plain rain/snow icon.
+* (steinwedel) **ENHANCED**: Thunderstorm candidate detection (`calculated.weatherState = "thunderstorm"`) no longer relies solely on heavy rain + overcast sky. It now also considers a gust-front wind spike (2-min high wind well above the 10-min average) and a sharp 3-hour barometric pressure drop as corroborating signals, requiring at least two of them to agree when more than one is available, since the WeatherLink Live has no lightning sensor support and a single signal (e.g. just an overcast sky) is also compatible with ordinary sustained rain.
+* (steinwedel) **NEW**: `sensors.tx<N>.windDirAvg10MinText` and `sensors.tx<N>.windDirHi10MinText` - 16-point compass abbreviations for the 10-minute average wind direction and the wind direction at the 10-minute gust, alongside the new numeric `windDirAvg10Min`/`windDirHi10Min` states they are derived from
+* (steinwedel) **NEW**: `sensors.tx<N>.wetBulb` - wet bulb temperature, if reported by the station
+* (steinwedel) **NEW**: `sensors.tx<N>.windSpeedHi2Min`/`windDirHi2Min`/`windDirHi2MinText` - the 2-minute wind gust speed and direction (reacts faster than the existing 10-minute gust states)
+* (steinwedel) **NEW**: `sensors.tx<N>.rainRateHi`, `rainRateHi15Min`, `rainfall60Min`, `rainfall24Hr` - additional peak rain rate and accumulation window states, alongside the existing 15-minute/daily/monthly/yearly rainfall states
+* (steinwedel) **NEW**: `sensors.tx<N>.rainStormStartAt`, `rainStormLast`, `rainStormLastStartAt`, `rainStormLastEndAt` - start/end timestamps (ISO 8601) and total for the current and most recently completed rain storm, alongside the existing `rainStorm` total
+* (steinwedel) **NEW**: `sensors.tx<N>.uvIndexText` - WHO/WMO UV risk category (`Niedrig`/`Mäßig`/`Hoch`/`Sehr hoch`/`Extrem`) derived from `uvIndex`
+* (steinwedel) **NEW**: `sensors.tx<N>.rainRateLastText` - WMO/NWS-inspired rain intensity category (`Kein Niederschlag`/`Leicht`/`Mäßig`/`Stark`/`Sehr stark`) derived from `rainRateLast`
+* (steinwedel) **NEW**: `sensors.tx<N>.temperatureFrostWarning` - boolean frost/ice-formation risk indicator, `true` at/below 0°C outside temperature
+* (steinwedel) **NEW**: `sensors.tx<N>.heatIndexText` - NWS-inspired heat risk category (`Keine`/`Vorsicht`/`Erhöhte Vorsicht`/`Gefahr`/`Extreme Gefahr`) derived from `heatIndex`
+* (steinwedel) **NEW**: `sensors.tx<N>.dewPointText` - NOAA dew point comfort/"mugginess" category (`Trocken`/`Angenehm`/`Schwül`/`Sehr schwül`) derived from `dewPoint`
+* (steinwedel) **CHANGED**: `sensors.soilLeaf<N>.soilMoisture1-4` now use the generic `value` role instead of `value.humidity`, since these report soil moisture tension in centibars, not relative air humidity in %
+* (steinwedel) **NEW**: Day/month/year/all-time minimum and maximum tracking (with an occurrence timestamp for each) for the actually measured temperature, humidity, dew point, heat index, wind speed, solar radiation, UV index, and barometric pressure values (outside and inside, where applicable) - e.g. `sensors.tx<N>.temperatureDayMax`/`temperatureDayMaxTime`, `...MonthMax`, `...YearMax`, `...AbsoluteMax` and the matching `...Min` states. Values are stored in the currently configured display unit and persisted across adapter restarts.
+* (steinwedel) **NEW**: `calculated.evapotranspiration` - estimated reference evapotranspiration (ETo, mm/day) for the current day, using the simplified Hargreaves-Samani equation from today's tracked min/max outside temperature and the configured location's latitude. Requires a configured location and at least one temperature reading for the current day; the estimate becomes more accurate as the day's actual temperature range is captured.
+
 ### 0.0.12 (2026-08-01)
 * (steinwedel) **CHANGED**: A failed real-time broadcast activation is now only logged as a warning after 3 consecutive failed attempts (transient failures before that are logged at debug level only), since occasional single activation failures against the WeatherLink Live are normal and self-recover on the next retry
 

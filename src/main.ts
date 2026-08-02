@@ -10,7 +10,14 @@ import { getSolarElevationDeg } from './lib/sun';
 import { computeWeatherIcon } from './lib/weathericon';
 import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
 import { addSample, type TimedSample } from './lib/movingaverage';
-import { getCompassDirection } from './lib/winddirection';
+import { getCompassDirection, computeDirectionSpread } from './lib/winddirection';
+import { getUvRiskLevelLabel } from './lib/uvindex';
+import { getRainIntensityLevelLabel } from './lib/rainintensity';
+import { isFrostRisk } from './lib/frost';
+import { getHeatRiskLevelLabel } from './lib/heatindex';
+import { getDewPointComfortLevelLabel } from './lib/dewpointcomfort';
+import { computeEvapotranspiration } from './lib/evapotranspiration';
+import { updateMinMax, type MinMaxState } from './lib/minmax';
 import {
     convertRainCount,
     convertValue,
@@ -36,7 +43,7 @@ interface FieldDefinition<T> {
     key: keyof T;
     id: string;
     name: string;
-    type: 'number' | 'boolean';
+    type: 'number' | 'boolean' | 'string';
     role: string;
     /** Static unit label for fields that are the same in both unit systems (e.g. "%", "W/m²") */
     unit?: string;
@@ -48,6 +55,22 @@ interface FieldDefinition<T> {
     isRainRate?: boolean;
     /** Marks a wind direction field for which a companion `<id>Text` compass-direction state (e.g. "NNO") should also be created */
     compassText?: boolean;
+    /** Marks a UNIX epoch (seconds) field that should be converted to an ISO 8601 datetime string instead of being stored as a raw number */
+    isTimestamp?: boolean;
+    /** Marks a UV index field for which a companion `<id>Text` risk-category state (e.g. "Mäßig") should also be created */
+    uvRiskText?: boolean;
+    /** Marks a rain rate field for which a companion `<id>Text` intensity-category state (e.g. "Mäßig") should also be created */
+    rainIntensityText?: boolean;
+    /** Marks the outside temperature field for which a companion `<id>FrostWarning` boolean state should also be created */
+    frostWarning?: boolean;
+    /** Marks a heat index-like field for which a companion `<id>Text` heat-risk-category state (e.g. "Vorsicht") should also be created */
+    heatRiskText?: boolean;
+    /** Marks the dew point field for which a companion `<id>Text` mugginess-category state (e.g. "Schwül") should also be created */
+    dewPointComfortText?: boolean;
+    /** Marks a field whose day/month/year/all-time min and max (each with an occurrence timestamp) should be tracked; see `lib/minmax.ts` */
+    trackMinMax?: boolean;
+    /** Marks a wind direction field for which a companion `<id>Spread5Min` state tracks the continuously-updated angular spread ("opening angle") of the last 5 minutes of readings; see `lib/winddirection.ts`'s `computeDirectionSpread()` */
+    directionSpread5Min?: boolean;
     states?: Record<number, string>;
 }
 
@@ -59,12 +82,32 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         type: 'number',
         role: 'value.temperature',
         unitKind: 'temperature',
+        trackMinMax: true,
+        frostWarning: true,
     },
-    { key: 'hum', id: 'humidity', name: 'Humidity', type: 'number', role: 'value.humidity', unit: '%' },
+    {
+        key: 'hum',
+        id: 'humidity',
+        name: 'Humidity',
+        type: 'number',
+        role: 'value.humidity',
+        unit: '%',
+        trackMinMax: true,
+    },
     {
         key: 'dew_point',
         id: 'dewPoint',
         name: 'Dew point',
+        type: 'number',
+        role: 'value.temperature',
+        unitKind: 'temperature',
+        trackMinMax: true,
+        dewPointComfortText: true,
+    },
+    {
+        key: 'wet_bulb',
+        id: 'wetBulb',
+        name: 'Wet bulb temperature',
         type: 'number',
         role: 'value.temperature',
         unitKind: 'temperature',
@@ -84,6 +127,8 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         type: 'number',
         role: 'value.temperature',
         unitKind: 'temperature',
+        trackMinMax: true,
+        heatRiskText: true,
     },
     {
         key: 'thw_index',
@@ -108,6 +153,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         type: 'number',
         role: 'value.speed.wind',
         unitKind: 'windSpeed',
+        trackMinMax: true,
     },
     {
         key: 'wind_dir_last',
@@ -117,6 +163,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         role: 'value.direction.wind',
         unit: '°',
         compassText: true,
+        directionSpread5Min: true,
     },
     {
         key: 'wind_speed_avg_last_10_min',
@@ -127,12 +174,47 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         unitKind: 'windSpeed',
     },
     {
+        key: 'wind_dir_scalar_avg_last_10_min',
+        id: 'windDirAvg10Min',
+        name: 'Wind direction avg (10 min)',
+        type: 'number',
+        role: 'value.direction.wind',
+        unit: '°',
+        compassText: true,
+    },
+    {
+        key: 'wind_speed_hi_last_2_min',
+        id: 'windSpeedHi2Min',
+        name: 'Wind gust (2 min)',
+        type: 'number',
+        role: 'value.speed.wind.max',
+        unitKind: 'windSpeed',
+    },
+    {
+        key: 'wind_dir_at_hi_speed_last_2_min',
+        id: 'windDirHi2Min',
+        name: 'Wind direction at gust (2 min)',
+        type: 'number',
+        role: 'value.direction.wind',
+        unit: '°',
+        compassText: true,
+    },
+    {
         key: 'wind_speed_hi_last_10_min',
         id: 'windSpeedHi10Min',
         name: 'Wind gust (10 min)',
         type: 'number',
         role: 'value.speed.wind.max',
         unitKind: 'windSpeed',
+    },
+    {
+        key: 'wind_dir_at_hi_speed_last_10_min',
+        id: 'windDirHi10Min',
+        name: 'Wind direction at gust (10 min)',
+        type: 'number',
+        role: 'value.direction.wind',
+        unit: '°',
+        compassText: true,
     },
     {
         key: 'rain_rate_last',
@@ -142,11 +224,46 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         role: 'value.precipitation',
         isRain: true,
         isRainRate: true,
+        rainIntensityText: true,
+    },
+    {
+        key: 'rain_rate_hi',
+        id: 'rainRateHi',
+        name: 'Rain rate (peak)',
+        type: 'number',
+        role: 'value.precipitation',
+        isRain: true,
+        isRainRate: true,
     },
     {
         key: 'rainfall_last_15_min',
         id: 'rainfall15Min',
         name: 'Rainfall (last 15 min)',
+        type: 'number',
+        role: 'value.precipitation',
+        isRain: true,
+    },
+    {
+        key: 'rain_rate_hi_last_15_min',
+        id: 'rainRateHi15Min',
+        name: 'Rain rate (peak, last 15 min)',
+        type: 'number',
+        role: 'value.precipitation',
+        isRain: true,
+        isRainRate: true,
+    },
+    {
+        key: 'rainfall_last_60_min',
+        id: 'rainfall60Min',
+        name: 'Rainfall (last 60 min)',
+        type: 'number',
+        role: 'value.precipitation',
+        isRain: true,
+    },
+    {
+        key: 'rainfall_last_24_hr',
+        id: 'rainfall24Hr',
+        name: 'Rainfall (last 24 h)',
         type: 'number',
         role: 'value.precipitation',
         isRain: true,
@@ -183,8 +300,57 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         role: 'value.precipitation',
         isRain: true,
     },
-    { key: 'solar_rad', id: 'solarRad', name: 'Solar radiation', type: 'number', role: 'value', unit: 'W/m²' },
-    { key: 'uv_index', id: 'uvIndex', name: 'UV index', type: 'number', role: 'value', unit: 'Index' },
+    {
+        key: 'rain_storm_start_at',
+        id: 'rainStormStartAt',
+        name: 'Current rain storm start',
+        type: 'string',
+        role: 'date',
+        isTimestamp: true,
+    },
+    {
+        key: 'rain_storm_last',
+        id: 'rainStormLast',
+        name: 'Last rain storm total',
+        type: 'number',
+        role: 'value.precipitation',
+        isRain: true,
+    },
+    {
+        key: 'rain_storm_last_start_at',
+        id: 'rainStormLastStartAt',
+        name: 'Last rain storm start',
+        type: 'string',
+        role: 'date',
+        isTimestamp: true,
+    },
+    {
+        key: 'rain_storm_last_end_at',
+        id: 'rainStormLastEndAt',
+        name: 'Last rain storm end',
+        type: 'string',
+        role: 'date',
+        isTimestamp: true,
+    },
+    {
+        key: 'solar_rad',
+        id: 'solarRad',
+        name: 'Solar radiation',
+        type: 'number',
+        role: 'value',
+        unit: 'W/m²',
+        trackMinMax: true,
+    },
+    {
+        key: 'uv_index',
+        id: 'uvIndex',
+        name: 'UV index',
+        type: 'number',
+        role: 'value',
+        unit: 'Index',
+        uvRiskText: true,
+        trackMinMax: true,
+    },
     {
         key: 'trans_battery_flag',
         id: 'lowBattery',
@@ -240,7 +406,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         id: 'soilMoisture1',
         name: 'Soil moisture 1',
         type: 'number',
-        role: 'value.humidity',
+        role: 'value',
         unit: 'cb',
     },
     {
@@ -248,7 +414,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         id: 'soilMoisture2',
         name: 'Soil moisture 2',
         type: 'number',
-        role: 'value.humidity',
+        role: 'value',
         unit: 'cb',
     },
     {
@@ -256,7 +422,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         id: 'soilMoisture3',
         name: 'Soil moisture 3',
         type: 'number',
-        role: 'value.humidity',
+        role: 'value',
         unit: 'cb',
     },
     {
@@ -264,7 +430,7 @@ const LEAF_SOIL_FIELDS: FieldDefinition<LeafSoilCondition>[] = [
         id: 'soilMoisture4',
         name: 'Soil moisture 4',
         type: 'number',
-        role: 'value.humidity',
+        role: 'value',
         unit: 'cb',
     },
     { key: 'wet_leaf_1', id: 'leafWetness1', name: 'Leaf wetness 1', type: 'number', role: 'value' },
@@ -286,6 +452,7 @@ const BAR_FIELDS: FieldDefinition<LssBarCondition>[] = [
         type: 'number',
         role: 'value.pressure',
         unitKind: 'pressure',
+        trackMinMax: true,
     },
     {
         key: 'bar_absolute',
@@ -313,8 +480,17 @@ const INSIDE_FIELDS: FieldDefinition<LssTempHumCondition>[] = [
         type: 'number',
         role: 'value.temperature',
         unitKind: 'temperature',
+        trackMinMax: true,
     },
-    { key: 'hum_in', id: 'humidity', name: 'Inside humidity', type: 'number', role: 'value.humidity', unit: '%' },
+    {
+        key: 'hum_in',
+        id: 'humidity',
+        name: 'Inside humidity',
+        type: 'number',
+        role: 'value.humidity',
+        unit: '%',
+        trackMinMax: true,
+    },
     {
         key: 'dew_point_in',
         id: 'dewPoint',
@@ -355,6 +531,8 @@ const REALTIME_ACTIVATION_WARN_THRESHOLD = 3;
 const MAX_TRANSMITTER_ID = 8;
 /** Time window over which solar radiation readings are averaged before being used for the cloud cover calculation */
 const SOLAR_RAD_SMOOTHING_WINDOW_MS = 5 * 60 * 1000;
+/** Rolling time window over which the wind direction "opening angle" (angular spread) is continuously recomputed */
+const DIRECTION_SPREAD_WINDOW_MS = 5 * 60 * 1000;
 
 /**
  * Validates that a value is a plausible transmitter ID before it is used to build an ioBroker object ID.
@@ -367,6 +545,20 @@ function validateTxId(txid: unknown): number | undefined {
         return undefined;
     }
     return txid;
+}
+
+/** The four min/max tracker periods maintained for each `trackMinMax` field, see `lib/minmax.ts` */
+const MIN_MAX_PERIODS = ['day', 'month', 'year', 'absolute'] as const;
+
+/**
+ * Capitalizes the first letter of a word, used to build tracker state ID suffixes like
+ * `DayMin`/`AbsoluteMax` from the lowercase period/extreme identifiers.
+ *
+ * @param word - The word to capitalize
+ * @returns The word with its first letter upper-cased
+ */
+function capitalize(word: string): string {
+    return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
 class Davis extends utils.Adapter {
@@ -383,6 +575,10 @@ class Davis extends utils.Adapter {
     /** Recent solar radiation readings, used to smooth out momentary dips (e.g. a passing cloud shadow) */
     private solarRadSamples: TimedSample[] = [];
     private units: UnitSystem = 'imperial';
+    /** In-memory cache of the day/month/year/absolute min/max tracker state for each `trackMinMax` field, keyed by its state ID; lazily reloaded from persisted states on first use after a restart */
+    private readonly minMaxCache = new Map<string, MinMaxState | undefined>();
+    /** In-memory rolling window of recent wind direction readings for each `directionSpread5Min` field, keyed by its state ID, used to continuously recompute the 5-minute angular spread */
+    private readonly windDirSpreadSamples = new Map<string, TimedSample[]>();
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -516,6 +712,7 @@ class Davis extends utils.Adapter {
             }
             await this.updateCloudCover(response.data.conditions);
             await this.updateWeatherIcon(response.data.conditions);
+            await this.updateEvapotranspiration(response.data.conditions);
 
             await this.setConnected(true);
         } catch (error) {
@@ -690,6 +887,9 @@ class Davis extends utils.Adapter {
         if (!iss) {
             return;
         }
+        const barometer = conditions.find(
+            (c): c is LssBarCondition => c.data_structure_type === DataStructureType.LssBar,
+        );
 
         const cloudCoverState = await this.getStateAsync('calculated.cloudCover');
         const cloudCoverPercent =
@@ -705,6 +905,18 @@ class Davis extends utils.Adapter {
         const windSpeedKmh =
             iss.wind_speed_last !== null && iss.wind_speed_last !== undefined
                 ? convertValue(iss.wind_speed_last, 'windSpeed', 'metric')
+                : undefined;
+        const windGustKmh =
+            iss.wind_speed_hi_last_2_min !== null && iss.wind_speed_hi_last_2_min !== undefined
+                ? convertValue(iss.wind_speed_hi_last_2_min, 'windSpeed', 'metric')
+                : undefined;
+        const windAvgKmh =
+            iss.wind_speed_avg_last_10_min !== null && iss.wind_speed_avg_last_10_min !== undefined
+                ? convertValue(iss.wind_speed_avg_last_10_min, 'windSpeed', 'metric')
+                : undefined;
+        const barTrendHpa =
+            barometer?.bar_trend !== null && barometer?.bar_trend !== undefined
+                ? convertValue(barometer.bar_trend, 'pressure', 'metric')
                 : undefined;
         const rainRateMmh =
             iss.rain_rate_last !== null && iss.rain_rate_last !== undefined
@@ -724,6 +936,9 @@ class Davis extends utils.Adapter {
             tempC,
             dewPointDepressionC,
             windSpeed: windSpeedKmh,
+            windGustKmh,
+            windAvgKmh,
+            barTrendHpa,
             isDay,
         });
 
@@ -774,6 +989,65 @@ class Davis extends utils.Adapter {
             val: `/adapter/${this.name}/${result.iconPath}`,
             ack: true,
         });
+    }
+
+    /**
+     * Estimates the reference evapotranspiration (ETo) for the current day using the
+     * Hargreaves-Samani equation (see `lib/evapotranspiration.ts`), from today's tracked
+     * minimum/maximum outside temperature (see `trackMinMax` on the ISS temperature field) and
+     * the station's latitude. Creates no state until a location is configured and at least one
+     * temperature reading has been recorded for today (so a real, if still growing, diurnal
+     * range is available) - the estimate naturally becomes more accurate as the day progresses
+     * and the temperature range widens towards its actual daily min/max.
+     *
+     * @param conditions - All condition records from the current poll
+     */
+    private async updateEvapotranspiration(conditions: Condition[]): Promise<void> {
+        if (!this.hasValidLocation()) {
+            return;
+        }
+        const iss = conditions.find((c): c is IssCondition => c.data_structure_type === DataStructureType.ISS);
+        const txid = validateTxId(iss?.txid);
+        if (txid === undefined) {
+            return;
+        }
+
+        const temperatureState = this.minMaxCache.get(`sensors.tx${txid}.temperature`);
+        const tempMin = temperatureState?.day.min?.value;
+        const tempMax = temperatureState?.day.max?.value;
+        if (tempMin === undefined || tempMax === undefined) {
+            // No temperature reading recorded for today yet (e.g. right after a restart, before
+            // the ISS temperature field has been processed at least once this poll cycle).
+            return;
+        }
+        // The min/max tracker stores values in the user's configured display unit, but the
+        // Hargreaves-Samani thresholds are calibrated in °C - convert independently of `this.units`.
+        const toCelsius = (fahrenheitOrCelsius: number): number =>
+            this.units === 'imperial' ? ((fahrenheitOrCelsius - 32) * 5) / 9 : fahrenheitOrCelsius;
+        const tempMinC = toCelsius(tempMin);
+        const tempMaxC = toCelsius(tempMax);
+
+        const eto = computeEvapotranspiration(tempMinC, tempMaxC, this.latitude!, new Date());
+        if (eto === undefined) {
+            return;
+        }
+
+        if (!this.knownStates.has('calculated.evapotranspiration')) {
+            await this.setObjectNotExistsAsync('calculated.evapotranspiration', {
+                type: 'state',
+                common: {
+                    name: 'Estimated reference evapotranspiration (ETo, today)',
+                    type: 'number',
+                    role: 'value',
+                    unit: 'mm/d',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            this.knownStates.add('calculated.evapotranspiration');
+        }
+        await this.setStateAsync('calculated.evapotranspiration', { val: Math.round(eto * 100) / 100, ack: true });
     }
 
     /**
@@ -882,29 +1156,302 @@ class Davis extends utils.Adapter {
                 this.knownStates.add(compassStateId);
             }
 
+            const uvRiskStateId = `${stateId}Text`;
+            if (field.uvRiskText && !this.knownStates.has(uvRiskStateId)) {
+                await this.setObjectNotExistsAsync(uvRiskStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (risk category)`,
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(uvRiskStateId);
+            }
+
+            const rainIntensityStateId = `${stateId}Text`;
+            if (field.rainIntensityText && !this.knownStates.has(rainIntensityStateId)) {
+                await this.setObjectNotExistsAsync(rainIntensityStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (intensity category)`,
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(rainIntensityStateId);
+            }
+
+            const frostWarningStateId = `${stateId}FrostWarning`;
+            if (field.frostWarning && !this.knownStates.has(frostWarningStateId)) {
+                await this.setObjectNotExistsAsync(frostWarningStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (frost warning)`,
+                        type: 'boolean',
+                        role: 'indicator',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(frostWarningStateId);
+            }
+
+            const heatRiskStateId = `${stateId}Text`;
+            if (field.heatRiskText && !this.knownStates.has(heatRiskStateId)) {
+                await this.setObjectNotExistsAsync(heatRiskStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (risk category)`,
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(heatRiskStateId);
+            }
+
+            const dewPointComfortStateId = `${stateId}Text`;
+            if (field.dewPointComfortText && !this.knownStates.has(dewPointComfortStateId)) {
+                await this.setObjectNotExistsAsync(dewPointComfortStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${field.name} (comfort category)`,
+                        type: 'string',
+                        role: 'text',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(dewPointComfortStateId);
+            }
+
             if (value === null || value === undefined) {
                 // Sensor exists but currently has no valid reading; keep last known value
                 continue;
             }
 
+            const rainSize = (record as unknown as { rain_size?: number | null }).rain_size;
             const val =
                 field.type === 'boolean'
                     ? Boolean(value)
-                    : field.isRain
-                      ? convertRainCount(
-                            Number(value),
-                            (record as unknown as { rain_size?: number | null }).rain_size,
-                            this.units,
-                        )
-                      : field.unitKind
-                        ? convertValue(Number(value), field.unitKind, this.units)
-                        : Number(value);
+                    : field.isTimestamp
+                      ? new Date(Number(value) * 1000).toISOString()
+                      : field.isRain
+                        ? convertRainCount(Number(value), rainSize, this.units)
+                        : field.unitKind
+                          ? convertValue(Number(value), field.unitKind, this.units)
+                          : Number(value);
             await this.setStateAsync(stateId, { val, ack: true });
 
             if (field.compassText) {
                 await this.setStateAsync(compassStateId, { val: getCompassDirection(Number(value)), ack: true });
             }
+            if (field.directionSpread5Min) {
+                await this.updateDirectionSpread(stateId, field.name, Number(value));
+            }
+            if (field.uvRiskText) {
+                await this.setStateAsync(uvRiskStateId, { val: getUvRiskLevelLabel(Number(value)), ack: true });
+            }
+            if (field.rainIntensityText) {
+                // Classification thresholds are calibrated in mm/h, independent of the user's
+                // display unit setting, so always convert to metric for this regardless of `this.units`.
+                const rateMmh = convertRainCount(Number(value), rainSize, 'metric');
+                await this.setStateAsync(rainIntensityStateId, {
+                    val: getRainIntensityLevelLabel(rateMmh),
+                    ack: true,
+                });
+            }
+            if (field.frostWarning) {
+                // Frost threshold is calibrated in °C, independent of the user's display unit setting.
+                const tempC = convertValue(Number(value), 'temperature', 'metric');
+                await this.setStateAsync(frostWarningStateId, { val: isFrostRisk(tempC), ack: true });
+            }
+            if (field.heatRiskText) {
+                // Heat risk thresholds are calibrated in °C, independent of the user's display unit setting.
+                const heatIndexC = convertValue(Number(value), 'temperature', 'metric');
+                await this.setStateAsync(heatRiskStateId, { val: getHeatRiskLevelLabel(heatIndexC), ack: true });
+            }
+            if (field.dewPointComfortText) {
+                // Comfort thresholds are calibrated in °C, independent of the user's display unit setting.
+                const dewPointC = convertValue(Number(value), 'temperature', 'metric');
+                await this.setStateAsync(dewPointComfortStateId, {
+                    val: getDewPointComfortLevelLabel(dewPointC),
+                    ack: true,
+                });
+            }
+            if (field.trackMinMax && typeof val === 'number') {
+                await this.updateFieldMinMax(stateId, field.name, val);
+            }
         }
+    }
+
+    /**
+     * Updates the day/month/year/absolute min/max tracker for one field with a newly measured
+     * value, creating the tracker states on first use and persisting/reloading them across
+     * adapter restarts (see `lib/minmax.ts` for the rollover logic itself).
+     *
+     * @param stateId - Object ID of the underlying value state (relative to the adapter namespace)
+     * @param fieldName - Display name of the underlying field, used to build the tracker state names
+     * @param value - The newly measured value, already converted to the current display unit
+     */
+    private async updateFieldMinMax(stateId: string, fieldName: string, value: number): Promise<void> {
+        if (!this.minMaxCache.has(stateId)) {
+            this.minMaxCache.set(stateId, await this.loadMinMaxState(stateId));
+        }
+        const previous = this.minMaxCache.get(stateId);
+        const updated = updateMinMax(previous, value, new Date());
+        this.minMaxCache.set(stateId, updated);
+
+        await this.ensureMinMaxObjects(stateId, fieldName);
+
+        for (const period of MIN_MAX_PERIODS) {
+            for (const extreme of ['min', 'max'] as const) {
+                const previousEntry = previous?.[period][extreme];
+                const newEntry = updated[period][extreme];
+                if (!newEntry || (previousEntry && previousEntry.timestamp === newEntry.timestamp)) {
+                    // No new extreme was recorded for this period/extreme combination this poll.
+                    continue;
+                }
+                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
+                await this.setStateAsync(`${stateId}${suffix}`, { val: newEntry.value, ack: true });
+                await this.setStateAsync(`${stateId}${suffix}Time`, {
+                    val: new Date(newEntry.timestamp).toISOString(),
+                    ack: true,
+                });
+            }
+        }
+    }
+
+    /**
+     * Creates the 16 min/max tracker states (day/month/year/absolute × min/max × value/time) for
+     * one field, if they don't already exist.
+     *
+     * @param stateId - Object ID of the underlying value state (relative to the adapter namespace)
+     * @param fieldName - Display name of the underlying field, used to build the tracker state names
+     */
+    private async ensureMinMaxObjects(stateId: string, fieldName: string): Promise<void> {
+        const marker = `${stateId}DayMin`;
+        if (this.knownStates.has(marker)) {
+            return;
+        }
+        const periodLabels: Record<(typeof MIN_MAX_PERIODS)[number], string> = {
+            day: 'today',
+            month: 'this month',
+            year: 'this year',
+            absolute: 'ever',
+        };
+        for (const period of MIN_MAX_PERIODS) {
+            for (const extreme of ['min', 'max'] as const) {
+                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
+                const valueStateId = `${stateId}${suffix}`;
+                const timeStateId = `${valueStateId}Time`;
+                const extremeLabel = extreme === 'min' ? 'minimum' : 'maximum';
+                await this.setObjectNotExistsAsync(valueStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${fieldName} (${extremeLabel} ${periodLabels[period]})`,
+                        type: 'number',
+                        role: 'value',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                await this.setObjectNotExistsAsync(timeStateId, {
+                    type: 'state',
+                    common: {
+                        name: `${fieldName} (${extremeLabel} ${periodLabels[period]}, timestamp)`,
+                        type: 'string',
+                        role: 'date',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+            }
+        }
+        this.knownStates.add(marker);
+    }
+
+    /**
+     * Reconstructs a field's persisted min/max tracker state from its ioBroker states after an
+     * adapter restart, so day/month/year/absolute extremes aren't lost across restarts. Returns
+     * `undefined` if no tracker states exist yet for this field (first run).
+     *
+     * @param stateId - Object ID of the underlying value state (relative to the adapter namespace)
+     * @returns The reconstructed tracker state, or `undefined` if nothing was persisted yet
+     */
+    private async loadMinMaxState(stateId: string): Promise<MinMaxState | undefined> {
+        const result: Partial<MinMaxState> = {};
+        let foundAny = false;
+        for (const period of MIN_MAX_PERIODS) {
+            const bucket: MinMaxState['day'] = {};
+            for (const extreme of ['min', 'max'] as const) {
+                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
+                const valueState = await this.getStateAsync(`${stateId}${suffix}`);
+                const timeState = await this.getStateAsync(`${stateId}${suffix}Time`);
+                if (typeof valueState?.val === 'number' && typeof timeState?.val === 'string') {
+                    const timestamp = new Date(timeState.val).getTime();
+                    if (Number.isFinite(timestamp)) {
+                        bucket[extreme] = { value: valueState.val, timestamp };
+                        foundAny = true;
+                    }
+                }
+            }
+            result[period] = bucket;
+        }
+        return foundAny ? (result as MinMaxState) : undefined;
+    }
+
+    /**
+     * Updates the continuously-recomputed 5-minute wind direction "opening angle" (angular
+     * spread) for one field with a newly measured direction reading. Unlike the day/month/year
+     * min/max trackers, this rolling window is purely in-memory and not persisted across
+     * restarts - after a restart it simply starts accumulating readings again from scratch,
+     * which is appropriate since it is only meant to reflect the last 5 minutes anyway.
+     *
+     * @param stateId - Object ID of the underlying wind direction state (relative to the adapter namespace)
+     * @param fieldName - Display name of the underlying field, used to build the tracker state name
+     * @param directionDeg - The newly measured wind direction, in degrees
+     */
+    private async updateDirectionSpread(stateId: string, fieldName: string, directionDeg: number): Promise<void> {
+        const previousSamples = this.windDirSpreadSamples.get(stateId) ?? [];
+        const { samples } = addSample(previousSamples, directionDeg, Date.now(), DIRECTION_SPREAD_WINDOW_MS);
+        this.windDirSpreadSamples.set(stateId, samples);
+
+        const spread = computeDirectionSpread(samples.map(s => s.value));
+        if (spread === undefined) {
+            return;
+        }
+
+        const spreadStateId = `${stateId}Spread5Min`;
+        if (!this.knownStates.has(spreadStateId)) {
+            await this.setObjectNotExistsAsync(spreadStateId, {
+                type: 'state',
+                common: {
+                    name: `${fieldName} (5-min opening angle)`,
+                    type: 'number',
+                    role: 'value.direction.wind',
+                    unit: '°',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            this.knownStates.add(spreadStateId);
+        }
+        await this.setStateAsync(spreadStateId, { val: Math.round(spread * 10) / 10, ack: true });
     }
 
     /**
