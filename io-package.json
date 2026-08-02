@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.12",
+    "version": "0.0.13",
     "news": {
+      "0.0.13": {
+        "en": "**NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, day and month minimum and maximum tracking, an evapotranspiration estimate, and a wind direction spread indicator, derived from existing sensor data",
+        "de": "**NEU**: Regenintensität, Frostwarnung, Hitzerisiko und Taupunktkomfortkategorien, minimale und maximale Tag- und Monatsverfolgung, eine Evapotranspirationsschätzung und ein Windrichtungsspreizungsindikator, abgeleitet aus vorhandenen Sensordaten",
+        "ru": "**Новое**: Интенсивность дождя, предупреждение о морозе, тепловой риск и категории комфорта точки росы, минимальное и максимальное отслеживание дня и месяца, оценка эвапотранспирации и индикатор распространения направления ветра, полученный из существующих данных датчиков",
+        "pt": "**NOVA**: Intensidade da chuva, aviso de geada, risco de calor e categorias de conforto do ponto de orvalho, acompanhamento mínimo e máximo do dia e mês, estimativa de evapotranspiração e indicador de propagação da direção do vento, derivado dos dados existentes do sensor",
+        "nl": "NIEUW**: Regenintensiteit, vorstwaarschuwing, warmterisico en dauwpunt comfort categorieën, dag en maand minimum en maximum tracking, een evapotranspiratie schatting, en een windrichting spread indicator, afgeleid van bestaande sensorgegevens",
+        "fr": "**NOUVEAU**: Intensité de la pluie, avertissement de gel, catégories de risque de chaleur et de confort des points de rosée, suivi minimal et maximal au jour et au mois, estimation de l'évapotranspiration et indicateur de propagation de la direction du vent, à partir des données de capteurs existantes",
+        "it": "# Intensità della pioggia, avvertimento del gelo, rischio di calore e di rugiada categorie di comfort, giorno e mese di tracciamento minimo e massimo, una stima di evapotranspiration, e un indicatore di diffusione della direzione del vento, derivato dai dati dei sensori esistenti",
+        "es": "**NEW**: Intensidad de lluvia, alerta de heladas, riesgo de calor y categorías de confort de punto de rocío, seguimiento mínimo y máximo de día y mes, estimación de evapotranspiración y indicador de propagación de la dirección del viento, derivado de datos de sensores existentes",
+        "pl": "* *NEW* *: Natężenie deszczu, ostrzeganie o mrozie, zagrożenie cieplne i punkt rosy kategorie komfortu, minimalny i maksymalny przebieg dnia i miesiąca, oszacowanie ewapotranspiracji i wskaźnik rozprzestrzeniania się wiatru, uzyskane z istniejących danych czujników ",
+        "uk": "**NEW***: Дощова інтенсивність, попередження заморозків, тепловий ризик та точка відключення категорії комфорту, день та місяць мінімального та максимального відстеження, оцінка евапоранспірації та індикатор поширення вітру з існуючих датчиків",
+        "zh-cn": "** NEW**: 根据现有传感器数据得出的降雨强度、霜警、热风险和露点舒适度类别、最低和最低月跟踪、蒸发估计和风向分布指标"
+      },
       "0.0.12": {
         "en": "**CHANGED**: A failed real-time broadcast activation is now only logged as a warning after 3 consecutive failed attempts (transient failures before that are logged at debug level only), since occasional single activation failures against the WeatherLink Live are normal and self-recover on the next retry",
         "de": "**GEÄNDERT**: Eine fehlgeschlagene Echtzeit-Broadcast-Aktivierung wird nun nur noch als Warnung nach 3 aufeinanderfolgenden fehlgeschlagenen Versuchen protokolliert (vorherige vorübergehende Ausfälle werden nur auf Debug-Ebene protokolliert), da gelegentliche einzelne Aktivierungsfehler gegen WeatherLink Live normal sind und sich beim nächsten Wiederholungsversuch selbst erholen",
@@ -80,19 +93,6 @@
         "pl": "* *CHANGED* *: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" in Dokumentation, Administra- UI- Texten und Adapter - Beschreibung verwendet ",
         "uk": "**CHANGED**: Vollständiger Gerätename \"Davis WeatherLink Live 6100\" statt nur \"Davis WeatherLink Live\" в Документації, Admin-UI-Texten und Adapter-Beschreibung verwendet",
         "zh-cn": "**CHANGED**:沃尔斯特·恩迪格尔·Gerätename \"Davis WeatherLink Live 6100\" start nur \"Davis WeatherLink Live\" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet"
-      },
-      "0.0.6": {
-        "en": "Documentation overhaul, calculated values moved to a dedicated folder",
-        "de": "Dokumentation überarbeitet, berechnete Werte in eigenen Ordner verschoben",
-        "ru": "Переработана документация, вычисляемые значения перенесены в отдельную папку",
-        "pt": "Documentação revisada, valores calculados movidos para pasta dedicada",
-        "nl": "Documentatie herzien, berekende waarden verplaatst naar eigen map",
-        "fr": "Documentation révisée, valeurs calculées déplacées dans un dossier dédié",
-        "it": "Documentazione rivista, valori calcolati spostati in una cartella dedicata",
-        "es": "Documentación revisada, valores calculados movidos a una carpeta dedicada",
-        "pl": "Dokumentacja poprawiona, obliczone wartości przeniesione do dedykowanego folderu",
-        "uk": "Оновлено документацію, обчислені значення перенесено в окрему папку",
-        "zh-cn": "文档修订，计算值已移至专用文件夹"
       }
     },
     "titleLang": {
