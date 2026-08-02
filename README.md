@@ -173,7 +173,7 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
-## **WORK IN PROGRESS**
+### **WORK IN PROGRESS**
 * (steinwedel) **NEW**: `sensors.tx<N>.windDirLastSpread5Min` - continuously recomputed angular spread ("opening angle") of the wind direction over the last 5 minutes, correctly handling the 0°/360° wrap-around; kept in an in-memory rolling window so it reflects the actual last 5 minutes on every poll rather than only becoming available after a full 5 minutes have elapsed
 * (steinwedel) **ENHANCED**: Simplified weather icon classification now distinguishes more WMO-inspired conditions from the existing sensor data: `drizzle`/`heavyRain` by rain rate, `sleet` for precipitation near freezing (0-2 °C), and `heavySnow` for higher snow rates. Precipitation with a non-overcast sky now uses the bundled "partly cloudy + rain/snow" icon variants instead of the plain rain/snow icon.
 * (steinwedel) **ENHANCED**: Thunderstorm candidate detection (`calculated.weatherState = "thunderstorm"`) no longer relies solely on heavy rain + overcast sky. It now also considers a gust-front wind spike (2-min high wind well above the 10-min average) and a sharp 3-hour barometric pressure drop as corroborating signals, requiring at least two of them to agree when more than one is available, since the WeatherLink Live has no lightning sensor support and a single signal (e.g. just an overcast sky) is also compatible with ordinary sustained rain.
