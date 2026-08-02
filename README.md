@@ -174,11 +174,7 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 
 ## Changelog
 ### **WORK IN PROGRESS**
-* (steinwedel) **NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, derived from existing sensor data
-* (steinwedel) **NEW**: Day/month/year/all-time min/max tracking with timestamps for the main measured values (temperature, humidity, wind speed, solar radiation, UV index, pressure)
-* (steinwedel) **NEW**: Estimated daily reference evapotranspiration (ETo)
-* (steinwedel) **NEW**: Continuously updated 5-minute wind direction spread, plus additional wind direction/speed, rain, and storm timestamp states
-* (steinwedel) **ENHANCED**: Refined weather icon classification and thunderstorm candidate detection using additional signals (gust front, pressure drop)
+* (steinwedel) **NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, day and month minimum and maximum tracking, an evapotranspiration estimate, and a wind direction spread indicator, derived from existing sensor data
 
 ### 0.0.12 (2026-08-01)
 * (steinwedel) **CHANGED**: A failed real-time broadcast activation is now only logged as a warning after 3 consecutive failed attempts (transient failures before that are logged at debug level only), since occasional single activation failures against the WeatherLink Live are normal and self-recover on the next retry
