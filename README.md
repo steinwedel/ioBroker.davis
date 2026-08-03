@@ -65,7 +65,7 @@ davis.0
 │   │   ├── dewPoint, dewPointText, dewPoint{Day,Month,Year,Absolute}{Min,Max}[Time], wetBulb, windChill
 │   │   ├── heatIndex, heatIndexText, heatIndex{Day,Month,Year,Absolute}{Min,Max}[Time], thwIndex, thswIndex, ...
 │   │   ├── windSpeedLast, windSpeedLast{Day,Month,Year,Absolute}{Min,Max}[Time]
-│   │   ├── windDirLast, windDirLastText, windDirLastSpread5Min, windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
+│   │   ├── windDirLast, windDirLastText, windDirLastMin5Min, windDirLastMax5Min, windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
 │   │   ├── windSpeedHi2Min, windDirHi2Min, windDirHi2MinText, windSpeedHi10Min, windDirHi10Min, windDirHi10MinText
 │   │   ├── rainRateLast, rainRateLastText, rainRateHi, rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
 │   │   ├── rainfallDaily, rainfallMonthly, rainfallYear
@@ -92,7 +92,7 @@ davis.0
 
 `windDirLastText`, `windDirAvg10MinText`, `windDirHi2MinText` und `windDirHi10MinText` enthalten die jeweilige Windrichtung als 16-teilige Kompass-Abkürzung (z. B. `N`, `NNO`, `O`, `SSW`, …), abgeleitet aus `windDirLast`/`windDirAvg10Min`/`windDirHi2Min`/`windDirHi10Min` in Grad.
 
-`windDirLastSpread5Min` enthält den Öffnungswinkel (die Winkelspanne) der Windrichtung der letzten 5 Minuten in Grad – also wie stark die Windrichtung in diesem Zeitraum "gependelt" hat. Der Wert wird bei jedem Poll aus einem laufend mitgeführten, gleitenden 5-Minuten-Fenster der letzten Windrichtungs-Messwerte neu berechnet (nicht erst, nachdem 5 Minuten vergangen sind – schon der erste Messwert ergibt sofort einen Wert von 0°, und der Öffnungswinkel wächst dann kontinuierlich mit jeder neuen Messung, bis das 5-Minuten-Fenster vollständig gefüllt ist). Ein Beispiel: Werte von 350°, 0° und 10° innerhalb der letzten 5 Minuten ergeben einen Öffnungswinkel von 20° (nicht 340°, da die 0°/360°-Grenze korrekt berücksichtigt wird). Dieses Fenster wird rein im Arbeitsspeicher gehalten und beginnt nach einem Adapter-Neustart wieder bei 0 – im Gegensatz zu den Tages-/Monats-/Jahres-/Absolut-Minimal-/Maximalwerten (siehe unten) ist das für einen reinen 5-Minuten-Indikator unproblematisch.
+`windDirLastMin5Min` und `windDirLastMax5Min` enthalten die beiden Randwinkel des kleinsten Kreisbogens, der alle Windrichtungs-Messwerte der letzten 5 Minuten umschließt (in Grad) – also die "Auslenkung" der Windrichtung in diesem Zeitraum. Im Uhrzeigersinn von `windDirLastMin5Min` nach `windDirLastMax5Min` (ggf. über 360°/0° hinweg, falls `windDirLastMax5Min` kleinerer Wert als `windDirLastMin5Min` ist) liegen alle beobachteten Richtungen. Die Werte werden bei jedem Poll aus einem laufend mitgeführten, gleitenden 5-Minuten-Fenster der letzten Windrichtungs-Messwerte neu berechnet (nicht erst, nachdem 5 Minuten vergangen sind – schon der erste Messwert ergibt sofort `windDirLastMin5Min = windDirLastMax5Min` = den aktuellen Wert, und der Bogen wächst dann kontinuierlich mit jeder neuen Messung, bis das 5-Minuten-Fenster vollständig gefüllt ist). Ein Beispiel: Werte von 350°, 0° und 10° innerhalb der letzten 5 Minuten ergeben `windDirLastMin5Min = 350` und `windDirLastMax5Min = 10` (ein 20°-Bogen über die 0°/360°-Grenze hinweg, nicht die viel größere 340°-Spanne, die eine naive Min/Max-Berechnung ergeben würde). Dieses Fenster wird rein im Arbeitsspeicher gehalten und beginnt nach einem Adapter-Neustart wieder neu – im Gegensatz zu den Tages-/Monats-/Jahres-/Absolut-Minimal-/Maximalwerten (siehe unten) ist das für einen reinen 5-Minuten-Indikator unproblematisch.
 
 `uvIndexText` enthält die UV-Risikokategorie nach der WHO/WMO-Skala (`Niedrig`, `Mäßig`, `Hoch`, `Sehr hoch`, `Extrem`), abgeleitet aus `uvIndex`.
 
@@ -173,6 +173,10 @@ Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einhei
 - Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
 
 ## Changelog
+### **WORK IN PROGRESS**
+* (steinwedel) **CHANGED**: The wind direction spread indicator now exposes the arc's two boundary angles (windDirLastMin5Min/windDirLastMax5Min) instead of a single opening-angle number, so the actual observed direction range can be shown, not just its size
+* (steinwedel) **FIXED**: Wind direction range tracking no longer includes readings taken during calm wind, since a vane's direction becomes unreliable noise at near-zero speed and could otherwise make the tracked 5-minute range balloon out to a spurious value (e.g. 0°) the wind never actually blew from
+
 ### 0.0.13 (2026-08-02)
 * (steinwedel) **NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, day and month minimum and maximum tracking, an evapotranspiration estimate, and a wind direction spread indicator, derived from existing sensor data
 

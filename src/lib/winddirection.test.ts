@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { getCompassDirection, computeDirectionSpread } from './winddirection';
+import { getCompassDirection, computeDirectionSpread, computeDirectionRange, isCalmWind } from './winddirection';
 
 describe('lib/winddirection getCompassDirection', () => {
     it('maps the 8 main compass points correctly', () => {
@@ -64,5 +64,58 @@ describe('lib/winddirection computeDirectionSpread', () => {
     it('normalizes out-of-range degree values before computing the spread', () => {
         // -10° and 370° both normalize to within a small arc around 0°/360° (350°, 10°, 0°).
         expect(computeDirectionSpread([-10, 370, 0])).to.equal(20);
+    });
+});
+
+describe('lib/winddirection computeDirectionRange', () => {
+    it('returns undefined for an empty reading list', () => {
+        expect(computeDirectionRange([])).to.be.undefined;
+    });
+
+    it('returns the same angle as both bounds for a single reading', () => {
+        expect(computeDirectionRange([180])).to.deep.equal({ min: 180, max: 180 });
+    });
+
+    it('returns the same angle as both bounds when all readings are identical', () => {
+        expect(computeDirectionRange([90, 90, 90])).to.deep.equal({ min: 90, max: 90 });
+    });
+
+    it('computes the bounds for readings that do not wrap around 0°/360°', () => {
+        expect(computeDirectionRange([80, 100, 90])).to.deep.equal({ min: 80, max: 100 });
+    });
+
+    it('computes the bounds correctly across the 0°/360° wrap-around', () => {
+        // 350°, 0°, and 10° all lie within a 20° arc from 350° to 10° (through 0°), not the
+        // much larger 340° arc a naive numeric min/max (350 vs 10) would suggest.
+        expect(computeDirectionRange([350, 10, 0])).to.deep.equal({ min: 350, max: 10 });
+    });
+
+    it('is consistent with computeDirectionSpread for the arc size', () => {
+        const directions = [10, 340, 350, 20];
+        const range = computeDirectionRange(directions)!;
+        const spread = computeDirectionSpread(directions)!;
+        // The arc from min to max (going through the wrap-around, if any) must have exactly the
+        // reported spread size.
+        const arcSize = range.max >= range.min ? range.max - range.min : 360 - range.min + range.max;
+        expect(arcSize).to.equal(spread);
+    });
+
+    it('normalizes out-of-range degree values before computing the bounds', () => {
+        expect(computeDirectionRange([-10, 370, 0])).to.deep.equal({ min: 350, max: 10 });
+    });
+});
+
+describe('lib/winddirection isCalmWind', () => {
+    it('treats zero wind speed as calm', () => {
+        expect(isCalmWind(0)).to.be.true;
+    });
+
+    it('treats a very low wind speed as calm', () => {
+        expect(isCalmWind(0.5)).to.be.true;
+    });
+
+    it('does not treat 1 mph or more as calm', () => {
+        expect(isCalmWind(1)).to.be.false;
+        expect(isCalmWind(5)).to.be.false;
     });
 });

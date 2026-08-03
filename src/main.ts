@@ -10,7 +10,7 @@ import { getSolarElevationDeg } from './lib/sun';
 import { computeWeatherIcon } from './lib/weathericon';
 import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
 import { addSample, type TimedSample } from './lib/movingaverage';
-import { getCompassDirection, computeDirectionSpread } from './lib/winddirection';
+import { getCompassDirection, computeDirectionRange, isCalmWind } from './lib/winddirection';
 import { getUvRiskLevelLabel } from './lib/uvindex';
 import { getRainIntensityLevelLabel } from './lib/rainintensity';
 import { isFrostRisk } from './lib/frost';
@@ -69,8 +69,8 @@ interface FieldDefinition<T> {
     dewPointComfortText?: boolean;
     /** Marks a field whose day/month/year/all-time min and max (each with an occurrence timestamp) should be tracked; see `lib/minmax.ts` */
     trackMinMax?: boolean;
-    /** Marks a wind direction field for which a companion `<id>Spread5Min` state tracks the continuously-updated angular spread ("opening angle") of the last 5 minutes of readings; see `lib/winddirection.ts`'s `computeDirectionSpread()` */
-    directionSpread5Min?: boolean;
+    /** Marks a wind direction field for which companion `<id>Min5Min`/`<id>Max5Min` states track the continuously-updated boundary angles of the smallest arc spanning the last 5 minutes of readings; see `lib/winddirection.ts`'s `computeDirectionRange()` */
+    directionRange5Min?: boolean;
     states?: Record<number, string>;
 }
 
@@ -163,7 +163,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         role: 'value.direction.wind',
         unit: '°',
         compassText: true,
-        directionSpread5Min: true,
+        directionRange5Min: true,
     },
     {
         key: 'wind_speed_avg_last_10_min',
@@ -531,7 +531,7 @@ const REALTIME_ACTIVATION_WARN_THRESHOLD = 3;
 const MAX_TRANSMITTER_ID = 8;
 /** Time window over which solar radiation readings are averaged before being used for the cloud cover calculation */
 const SOLAR_RAD_SMOOTHING_WINDOW_MS = 5 * 60 * 1000;
-/** Rolling time window over which the wind direction "opening angle" (angular spread) is continuously recomputed */
+/** Rolling time window over which the wind direction's smallest enclosing arc (min/max boundary angles) is continuously recomputed */
 const DIRECTION_SPREAD_WINDOW_MS = 5 * 60 * 1000;
 
 /**
@@ -577,7 +577,7 @@ class Davis extends utils.Adapter {
     private units: UnitSystem = 'imperial';
     /** In-memory cache of the day/month/year/absolute min/max tracker state for each `trackMinMax` field, keyed by its state ID; lazily reloaded from persisted states on first use after a restart */
     private readonly minMaxCache = new Map<string, MinMaxState | undefined>();
-    /** In-memory rolling window of recent wind direction readings for each `directionSpread5Min` field, keyed by its state ID, used to continuously recompute the 5-minute angular spread */
+    /** In-memory rolling window of recent wind direction readings for each `directionRange5Min` field, keyed by its state ID, used to continuously recompute the 5-minute min/max boundary angles */
     private readonly windDirSpreadSamples = new Map<string, TimedSample[]>();
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
@@ -1257,8 +1257,15 @@ class Davis extends utils.Adapter {
             if (field.compassText) {
                 await this.setStateAsync(compassStateId, { val: getCompassDirection(Number(value)), ack: true });
             }
-            if (field.directionSpread5Min) {
-                await this.updateDirectionSpread(stateId, field.name, Number(value));
+            if (field.directionRange5Min) {
+                // At (near-)calm wind, the vane's direction reading is essentially noise (see
+                // `isCalmWind()`), so it is excluded from the 5-minute range tracking to avoid
+                // spurious readings (e.g. a stray 0°) from making the detected range balloon out
+                // to cover directions the wind never actually blew from.
+                const windSpeedMph = (record as unknown as { wind_speed_last?: number | null }).wind_speed_last;
+                if (typeof windSpeedMph !== 'number' || !isCalmWind(windSpeedMph)) {
+                    await this.updateDirectionRange(stateId, field.name, Number(value));
+                }
             }
             if (field.uvRiskText) {
                 await this.setStateAsync(uvRiskStateId, { val: getUvRiskLevelLabel(Number(value)), ack: true });
@@ -1415,32 +1422,34 @@ class Davis extends utils.Adapter {
     }
 
     /**
-     * Updates the continuously-recomputed 5-minute wind direction "opening angle" (angular
-     * spread) for one field with a newly measured direction reading. Unlike the day/month/year
-     * min/max trackers, this rolling window is purely in-memory and not persisted across
-     * restarts - after a restart it simply starts accumulating readings again from scratch,
-     * which is appropriate since it is only meant to reflect the last 5 minutes anyway.
+     * Updates the continuously-recomputed 5-minute wind direction min/max boundary angles (the
+     * smallest arc containing all recent readings) for one field with a newly measured direction
+     * reading. Unlike the day/month/year min/max trackers, this rolling window is purely
+     * in-memory and not persisted across restarts - after a restart it simply starts
+     * accumulating readings again from scratch, which is appropriate since it is only meant to
+     * reflect the last 5 minutes anyway.
      *
      * @param stateId - Object ID of the underlying wind direction state (relative to the adapter namespace)
-     * @param fieldName - Display name of the underlying field, used to build the tracker state name
+     * @param fieldName - Display name of the underlying field, used to build the tracker state names
      * @param directionDeg - The newly measured wind direction, in degrees
      */
-    private async updateDirectionSpread(stateId: string, fieldName: string, directionDeg: number): Promise<void> {
+    private async updateDirectionRange(stateId: string, fieldName: string, directionDeg: number): Promise<void> {
         const previousSamples = this.windDirSpreadSamples.get(stateId) ?? [];
         const { samples } = addSample(previousSamples, directionDeg, Date.now(), DIRECTION_SPREAD_WINDOW_MS);
         this.windDirSpreadSamples.set(stateId, samples);
 
-        const spread = computeDirectionSpread(samples.map(s => s.value));
-        if (spread === undefined) {
+        const range = computeDirectionRange(samples.map(s => s.value));
+        if (range === undefined) {
             return;
         }
 
-        const spreadStateId = `${stateId}Spread5Min`;
-        if (!this.knownStates.has(spreadStateId)) {
-            await this.setObjectNotExistsAsync(spreadStateId, {
+        const minStateId = `${stateId}Min5Min`;
+        const maxStateId = `${stateId}Max5Min`;
+        if (!this.knownStates.has(minStateId)) {
+            await this.setObjectNotExistsAsync(minStateId, {
                 type: 'state',
                 common: {
-                    name: `${fieldName} (5-min opening angle)`,
+                    name: `${fieldName} (5-min arc start)`,
                     type: 'number',
                     role: 'value.direction.wind',
                     unit: '°',
@@ -1449,9 +1458,23 @@ class Davis extends utils.Adapter {
                 },
                 native: {},
             });
-            this.knownStates.add(spreadStateId);
+            await this.setObjectNotExistsAsync(maxStateId, {
+                type: 'state',
+                common: {
+                    name: `${fieldName} (5-min arc end)`,
+                    type: 'number',
+                    role: 'value.direction.wind',
+                    unit: '°',
+                    read: true,
+                    write: false,
+                },
+                native: {},
+            });
+            this.knownStates.add(minStateId);
+            this.knownStates.add(maxStateId);
         }
-        await this.setStateAsync(spreadStateId, { val: Math.round(spread * 10) / 10, ack: true });
+        await this.setStateAsync(minStateId, { val: range.min, ack: true });
+        await this.setStateAsync(maxStateId, { val: range.max, ack: true });
     }
 
     /**

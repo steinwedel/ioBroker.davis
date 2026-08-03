@@ -1,0 +1,3 @@
+chore: release v0.0.13
+
+* (steinwedel) **NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, day and month minimum and maximum tracking, an evapotranspiration estimate, and a wind direction spread indicator, derived from existing sensor data
