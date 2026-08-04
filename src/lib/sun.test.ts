@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { getSolarElevationDeg } from './sun';
+import { getSolarElevationDeg, getSunriseSunset } from './sun';
 
 describe('lib/sun getSolarElevationDeg', () => {
     it('returns close to the maximum elevation for local solar noon at the equator on an equinox', () => {
@@ -21,5 +21,30 @@ describe('lib/sun getSolarElevationDeg', () => {
         const date = new Date('2024-06-21T11:00:00Z');
         const elevation = getSolarElevationDeg(date, 52.52, 13.405);
         expect(elevation).to.be.greaterThan(50);
+    });
+});
+
+describe('lib/sun getSunriseSunset', () => {
+    it('returns an earlier sunrise and later sunset in summer than in winter at mid-latitudes', () => {
+        const summer = getSunriseSunset(new Date('2024-06-21T00:00:00Z'), 52.52, 13.405); // Berlin
+        const winter = getSunriseSunset(new Date('2024-12-21T00:00:00Z'), 52.52, 13.405);
+        expect(summer).to.not.be.undefined;
+        expect(winter).to.not.be.undefined;
+        // Day length (sunset - sunrise) must be much longer in summer than in winter
+        const summerDayLengthMs = summer!.sunset.getTime() - summer!.sunrise.getTime();
+        const winterDayLengthMs = winter!.sunset.getTime() - winter!.sunrise.getTime();
+        expect(summerDayLengthMs).to.be.greaterThan(winterDayLengthMs);
+    });
+
+    it('places sunrise before sunset on the same calendar day for temperate latitudes', () => {
+        const result = getSunriseSunset(new Date('2024-09-22T00:00:00Z'), 40, 0);
+        expect(result).to.not.be.undefined;
+        expect(result!.sunrise.getTime()).to.be.lessThan(result!.sunset.getTime());
+    });
+
+    it('returns undefined for polar night (sun never rises)', () => {
+        // Deep in the polar night at the north pole around the December solstice
+        const result = getSunriseSunset(new Date('2024-12-21T00:00:00Z'), 89, 0);
+        expect(result).to.be.undefined;
     });
 });

@@ -54,6 +54,33 @@ const WMO_CODE: Record<WeatherState, number> = {
     thunderstorm: 95,
 };
 
+/** German display labels for each condition, used by the "Wetter" HTML widget (see `htmlwidget.ts`) */
+const STATE_LABEL_DE: Record<WeatherState, string> = {
+    clear: 'Klar',
+    mostlyClear: 'Überwiegend klar',
+    partlyCloudy: 'Teilweise bewölkt',
+    cloudy: 'Bewölkt',
+    overcast: 'Bedeckt',
+    fog: 'Nebel',
+    drizzle: 'Leichter Regen',
+    rain: 'Regen',
+    heavyRain: 'Starkregen',
+    sleet: 'Schneeregen',
+    snow: 'Schnee',
+    heavySnow: 'Starker Schneefall',
+    thunderstorm: 'Gewitter',
+};
+
+/**
+ * Returns the German display label for a derived weather condition.
+ *
+ * @param state - The derived weather condition
+ * @returns The German display label, e.g. "Bedeckt"
+ */
+export function getWeatherStateLabel(state: WeatherState): string {
+    return STATE_LABEL_DE[state];
+}
+
 /**
  * Picks the bundled icon file for a condition and day/night variant.
  *

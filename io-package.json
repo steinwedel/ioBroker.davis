@@ -166,7 +166,10 @@
     "pollInterval": 20,
     "units": "metric",
     "realtimeEnabled": false,
-    "realtimeDuration": 90
+    "realtimeDuration": 90,
+    "htmlWidgetEnabled": true,
+    "webBaseUrl": "",
+    "forecastIntervalMinutes": 30
   },
   "objects": [],
   "instanceObjects": []

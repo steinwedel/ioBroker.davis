@@ -20,6 +20,70 @@ const RAD_TO_DEG = 180 / Math.PI;
  * @returns The solar elevation angle in degrees (negative when the sun is below the horizon)
  */
 export function getSolarElevationDeg(date: Date, latitudeDeg: number, longitudeDeg: number): number {
+    const { elevationDeg } = computeSunPosition(date, latitudeDeg, longitudeDeg);
+    return elevationDeg;
+}
+
+/**
+ * Computes today's sunrise and sunset times for a given location, using the same solar
+ * declination/equation-of-time terms as `getSolarElevationDeg()` combined with the standard
+ * hour-angle formula for a horizon crossing (corrected for atmospheric refraction and the sun's
+ * apparent radius, i.e. the usual -0.833° reference used for "sunrise"/"sunset").
+ *
+ * @param date - Any UTC date/time on the day to compute sunrise/sunset for
+ * @param latitudeDeg - Observer latitude in degrees (positive north)
+ * @param longitudeDeg - Observer longitude in degrees (positive east)
+ * @returns The sunrise/sunset UTC instants, or `undefined` for polar day/night (sun never
+ *   crosses the horizon that day)
+ */
+export function getSunriseSunset(
+    date: Date,
+    latitudeDeg: number,
+    longitudeDeg: number,
+): { sunrise: Date; sunset: Date } | undefined {
+    const noonUtc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
+    const { declinationDeg, eqTimeMinutes } = computeSunPosition(noonUtc, latitudeDeg, longitudeDeg);
+
+    const latRad = latitudeDeg * DEG_TO_RAD;
+    const decRad = declinationDeg * DEG_TO_RAD;
+    const SUNRISE_SUNSET_ZENITH_DEG = 90.833; // includes atmospheric refraction + solar radius
+
+    const cosHourAngle =
+        (Math.cos(SUNRISE_SUNSET_ZENITH_DEG * DEG_TO_RAD) - Math.sin(latRad) * Math.sin(decRad)) /
+        (Math.cos(latRad) * Math.cos(decRad));
+    if (cosHourAngle > 1 || cosHourAngle < -1) {
+        // Sun never crosses the horizon today at this latitude (polar day/night)
+        return undefined;
+    }
+    const hourAngleDeg = Math.acos(cosHourAngle) * RAD_TO_DEG;
+
+    // Solar noon in UTC minutes, corrected by the equation of time and the observer's longitude
+    const solarNoonUtcMinutes = 720 - 4 * longitudeDeg - eqTimeMinutes;
+    const sunriseUtcMinutes = solarNoonUtcMinutes - 4 * hourAngleDeg;
+    const sunsetUtcMinutes = solarNoonUtcMinutes + 4 * hourAngleDeg;
+
+    const dayStartUtc = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return {
+        sunrise: new Date(dayStartUtc + sunriseUtcMinutes * 60000),
+        sunset: new Date(dayStartUtc + sunsetUtcMinutes * 60000),
+    };
+}
+
+/**
+ * Shared solar position computation (elevation angle, declination, equation of time) used by
+ * both `getSolarElevationDeg()` and `getSunriseSunset()`, based on a simplified version of the
+ * NOAA solar position algorithm, accurate to within about 0.01° for dates between 1950 and 2050.
+ *
+ * @param date - The UTC date/time to compute the sun position for
+ * @param latitudeDeg - Observer latitude in degrees (positive north)
+ * @param longitudeDeg - Observer longitude in degrees (positive east)
+ * @returns The solar elevation angle, declination, and equation of time (in minutes)
+ */
+function computeSunPosition(
+    date: Date,
+    latitudeDeg: number,
+    longitudeDeg: number,
+): { elevationDeg: number; declinationDeg: number; eqTimeMinutes: number } {
     const julianDay = toJulianDay(date);
     const julianCentury = (julianDay - 2451545) / 36525;
 
@@ -74,7 +138,7 @@ export function getSolarElevationDeg(date: Date, latitudeDeg: number, longitudeD
         Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngleRad);
     const zenithDeg = Math.acos(Math.min(1, Math.max(-1, cosZenith))) * RAD_TO_DEG;
 
-    return 90 - zenithDeg;
+    return { elevationDeg: 90 - zenithDeg, declinationDeg: sunDeclination, eqTimeMinutes: eqTime };
 }
 
 /**

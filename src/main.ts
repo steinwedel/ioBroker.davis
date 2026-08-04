@@ -6,8 +6,8 @@ import * as dgram from 'node:dgram';
 import * as utils from '@iobroker/adapter-core';
 import { computeCloudCoverHeuristic, computeCloudCoverSolar, type CloudCoverModel } from './lib/cloudcover';
 import { discoverWeatherLinkLive } from './lib/discovery';
-import { getSolarElevationDeg } from './lib/sun';
-import { computeWeatherIcon } from './lib/weathericon';
+import { getSolarElevationDeg, getSunriseSunset } from './lib/sun';
+import { computeWeatherIcon, getWeatherStateLabel, type WeatherState } from './lib/weathericon';
 import { getReference, recordObservation, type ClearSkyReferenceMap } from './lib/clearskyreference';
 import { addSample, type TimedSample } from './lib/movingaverage';
 import { getCompassDirection, computeDirectionRange, isCalmWind } from './lib/winddirection';
@@ -18,6 +18,14 @@ import { getHeatRiskLevelLabel } from './lib/heatindex';
 import { getDewPointComfortLevelLabel } from './lib/dewpointcomfort';
 import { computeEvapotranspiration } from './lib/evapotranspiration';
 import { updateMinMax, type MinMaxState } from './lib/minmax';
+import {
+    buildWindRoseSvg,
+    buildCurrentConditionsHtml,
+    buildForecastHtml,
+    type WindRoseAnimationState,
+    type ForecastDay,
+} from './lib/htmlwidget';
+import { buildBrightSkyUrl, processBrightSkyForecast, type BrightSkyResponse } from './lib/forecast';
 import {
     convertRainCount,
     convertValue,
@@ -533,6 +541,19 @@ const MAX_TRANSMITTER_ID = 8;
 const SOLAR_RAD_SMOOTHING_WINDOW_MS = 5 * 60 * 1000;
 /** Rolling time window over which the wind direction's smallest enclosing arc (min/max boundary angles) is continuously recomputed */
 const DIRECTION_SPREAD_WINDOW_MS = 5 * 60 * 1000;
+/**
+ * Debounce delay for rebuilding the "Wetter" HTML widget's current-conditions state after a
+ * relevant sensor value changes. The real-time UDP broadcast can update wind readings every
+ * ~2.5s; without debouncing, every single one of those would trigger a full HTML rebuild and
+ * `setState`, which is unnecessary churn for a value that is only ever displayed to a human.
+ */
+const HTML_REBUILD_DEBOUNCE_MS = 2000;
+/** Fallback coordinates (Garbsen, Germany) used for the Bright Sky forecast only if no location is configured in the ioBroker system settings */
+const DEFAULT_FORECAST_LAT = 52.4153;
+const DEFAULT_FORECAST_LON = 9.5891;
+/** Fallback sunrise/sunset hours used for the forecast's day/night icon selection if no location is configured */
+const DEFAULT_SUNRISE_HOUR = 6;
+const DEFAULT_SUNSET_HOUR = 20;
 
 /**
  * Validates that a value is a plausible transmitter ID before it is used to build an ioBroker object ID.
@@ -579,6 +600,17 @@ class Davis extends utils.Adapter {
     private readonly minMaxCache = new Map<string, MinMaxState | undefined>();
     /** In-memory rolling window of recent wind direction readings for each `directionRange5Min` field, keyed by its state ID, used to continuously recompute the 5-minute min/max boundary angles */
     private readonly windDirSpreadSamples = new Map<string, TimedSample[]>();
+    /** Whether the `html.current`/`html.forecast` states have been created (see `onReady()`) */
+    private htmlWidgetEnabled = false;
+    /** Debounce timer for `scheduleHtmlRebuild()` */
+    private htmlRebuildTimer: ReturnType<typeof this.setTimeout> | undefined;
+    /** Wind rose animation state, persisted across HTML rebuilds for smooth cross-call animation; see `lib/htmlwidget.ts` */
+    private readonly windRoseState: WindRoseAnimationState = {};
+    private forecastFetchTimer: ReturnType<typeof this.setInterval> | undefined;
+    /** Most recently successfully processed forecast days, kept across failed re-fetches so the widget keeps showing the last known forecast instead of going blank */
+    private forecastDays: ForecastDay[] = [];
+    /** Set when the most recent Bright Sky forecast fetch failed; cleared on the next successful fetch. Shown in the widget alongside the (possibly stale) last successful forecast. */
+    private forecastErrorText: string | undefined;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -654,6 +686,10 @@ class Davis extends utils.Adapter {
             return;
         }
 
+        if (this.config.htmlWidgetEnabled !== false) {
+            await this.setupHtmlWidget();
+        }
+
         const pollIntervalMs = Math.max(10, Number(this.config.pollInterval) || 20) * 1000;
 
         // Do an initial poll immediately, then continue on the configured interval
@@ -719,6 +755,9 @@ class Davis extends utils.Adapter {
             this.log.error(`Polling WeatherLink Live 6100 failed: ${(error as Error).message}`);
             await this.setConnected(false);
         }
+        // Rebuild the HTML widget regardless of success/failure, so a connection loss is
+        // reflected in it too (see `buildCurrentConditionsHtml()`'s `isConnected` banner).
+        this.scheduleHtmlRebuild();
     }
 
     /**
@@ -1079,6 +1118,241 @@ class Davis extends utils.Adapter {
             Math.abs(lat) <= 90 &&
             Math.abs(lon) <= 180
         );
+    }
+
+    // ---- "Wetter" HTML widget (current conditions + forecast), see lib/htmlwidget.ts ----
+
+    /**
+     * Creates the `html.current`/`html.forecast` states (VIS/Jarvis HTML widget content) and
+     * starts the periodic Bright Sky forecast fetch. Called once from `onReady()` if the HTML
+     * widget is enabled in the adapter configuration (enabled by default).
+     */
+    private async setupHtmlWidget(): Promise<void> {
+        await this.setObjectNotExistsAsync('html', {
+            type: 'channel',
+            common: { name: 'Wetter HTML widget' },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync('html.current', {
+            type: 'state',
+            common: {
+                name: 'Current conditions (HTML)',
+                type: 'string',
+                role: 'html',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync('html.forecast', {
+            type: 'state',
+            common: {
+                name: 'Forecast (HTML)',
+                type: 'string',
+                role: 'html',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+        this.htmlWidgetEnabled = true;
+
+        const forecastIntervalMs = Math.max(5, Number(this.config.forecastIntervalMinutes) || 30) * 60 * 1000;
+        await this.fetchAndBuildForecastHtml();
+        this.forecastFetchTimer = this.setInterval(() => {
+            void this.fetchAndBuildForecastHtml();
+        }, forecastIntervalMs);
+    }
+
+    /**
+     * Resolves an icon file name (see `lib/weathericon.ts`/`lib/forecast.ts`) to a URL usable in
+     * an `<img src>` from within a VIS/Jarvis HTML widget. Relative `/adapter/<name>/...` paths
+     * only resolve correctly if the page hosting the widget is served by the same ioBroker `web`
+     * instance; some widget hosts (e.g. Jarvis) instead resolve `<img>` sources relative to their
+     * own location and don't support that convention. If this happens, set the optional
+     * `webBaseUrl` adapter setting (e.g. `http://<host>:8082`) to the `web` instance's own base
+     * URL to force absolute links instead.
+     *
+     * @param relativePath - Path relative to the adapter's `admin` directory, e.g. `img/weathericons/rain.svg`
+     */
+    private toWidgetIconUrl(relativePath: string): string {
+        const relative = `/adapter/${this.name}/${relativePath}`;
+        const base = (this.config.webBaseUrl ?? '').trim();
+        return base ? `${base.replace(/\/+$/, '')}${relative}` : relative;
+    }
+
+    /**
+     * Debounces a rebuild of the `html.current` state (see `HTML_REBUILD_DEBOUNCE_MS`), so that
+     * bursts of rapid sensor updates (e.g. the real-time UDP broadcast) collapse into a single
+     * rebuild instead of one per individual update.
+     */
+    private scheduleHtmlRebuild(): void {
+        if (!this.htmlWidgetEnabled) {
+            return;
+        }
+        if (this.htmlRebuildTimer) {
+            this.clearTimeout(this.htmlRebuildTimer);
+        }
+        this.htmlRebuildTimer = this.setTimeout(() => {
+            this.htmlRebuildTimer = undefined;
+            void this.buildAndSetCurrentHtml();
+        }, HTML_REBUILD_DEBOUNCE_MS);
+    }
+
+    /**
+     * Finds the first ISS transmitter channel created by `updateChannel()` (e.g. `sensors.tx1`),
+     * which is what the HTML widget's current-conditions panel (temperature, wind, etc.) is
+     * built from. Most home installations only have a single ISS transmitter; if several are
+     * present, the one with the lowest transmitter ID is used.
+     *
+     * @returns The channel ID (relative to the adapter namespace), or `undefined` if no ISS
+     *   channel has been created yet (e.g. right after a fresh start, before the first poll)
+     */
+    private getPrimaryIssChannelId(): string | undefined {
+        const txIds = [...this.knownChannels]
+            .map(id => /^sensors\.tx(\d+)$/.exec(id))
+            .filter((match): match is RegExpExecArray => match !== null)
+            .map(match => Number(match[1]))
+            .sort((a, b) => a - b);
+        return txIds.length > 0 ? `sensors.tx${txIds[0]}` : undefined;
+    }
+
+    /**
+     * Reads a state's value, tolerating the state not existing (or not yet having a value) at
+     * all, which is common right after a fresh adapter start before the first poll has run.
+     *
+     * @param stateId - Object ID of the state to read (relative to the adapter namespace)
+     */
+    private async safeGetStateVal<T extends string | number | boolean>(stateId: string): Promise<T | undefined> {
+        try {
+            const state = await this.getStateAsync(stateId);
+            return state?.val as T | undefined;
+        } catch {
+            return undefined;
+        }
+    }
+
+    /**
+     * Formats a `Date` as `HH:MM` in the ioBroker host's local time zone.
+     *
+     * @param date
+     */
+    private formatTimeHHMM(date: Date): string {
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    }
+
+    /**
+     * Rebuilds the `html.current` state from the current sensor values and the persisted wind
+     * rose animation state. Tolerant of missing/not-yet-available values (e.g. right after a
+     * fresh start): those are simply shown as "?" or omitted, rather than throwing.
+     */
+    private async buildAndSetCurrentHtml(): Promise<void> {
+        if (!this.htmlWidgetEnabled) {
+            return;
+        }
+        const issChannel = this.getPrimaryIssChannelId();
+        if (!issChannel) {
+            // No ISS channel created yet (e.g. before the first successful poll); nothing to show yet.
+            return;
+        }
+
+        const temperature = await this.safeGetStateVal<number>(`${issChannel}.temperature`);
+        const humidity = await this.safeGetStateVal<number>(`${issChannel}.humidity`);
+        const pressure = await this.safeGetStateVal<number>('sensors.barometer.seaLevel');
+        const rainfallToday = await this.safeGetStateVal<number>(`${issChannel}.rainfallDaily`);
+        const windSpeedKmh = await this.safeGetStateVal<number>(`${issChannel}.windSpeedLast`);
+        const windGustKmh = await this.safeGetStateVal<number>(`${issChannel}.windSpeedHi10Min`);
+        const windDirDeg = await this.safeGetStateVal<number>(`${issChannel}.windDirLast`);
+        const windDirMin5 = await this.safeGetStateVal<number>(`${issChannel}.windDirLastMin5Min`);
+        const windDirMax5 = await this.safeGetStateVal<number>(`${issChannel}.windDirLastMax5Min`);
+        const weatherIconPath = await this.safeGetStateVal<string>('calculated.weatherIcon');
+        const weatherStateKey = await this.safeGetStateVal<string>('calculated.weatherState');
+
+        let sunriseText: string | undefined;
+        let sunsetText: string | undefined;
+        if (this.hasValidLocation()) {
+            const sunTimes = getSunriseSunset(new Date(), this.latitude!, this.longitude!);
+            if (sunTimes) {
+                sunriseText = this.formatTimeHHMM(sunTimes.sunrise);
+                sunsetText = this.formatTimeHHMM(sunTimes.sunset);
+            }
+        }
+
+        const windRoseSvg = buildWindRoseSvg(
+            { directionDeg: windDirDeg, minDeg: windDirMin5, maxDeg: windDirMax5, windSpeedKmh },
+            this.windRoseState,
+        );
+
+        const html = buildCurrentConditionsHtml({
+            isConnected: this.isConnected,
+            iconUrl: weatherIconPath
+                ? this.toWidgetIconUrl(weatherIconPath.replace(/^\/adapter\/[^/]+\//, ''))
+                : undefined,
+            temperatureText:
+                temperature !== undefined ? `${temperature}${getUnitLabel('temperature', this.units)}` : undefined,
+            weatherStateText: weatherStateKey ? getWeatherStateLabel(weatherStateKey as WeatherState) : '',
+            rainfallTodayText:
+                rainfallToday !== undefined ? `${rainfallToday} ${getRainUnitLabel(this.units)}` : undefined,
+            humidityText: humidity !== undefined ? `${humidity}%` : undefined,
+            pressureText: pressure !== undefined ? `${pressure} ${getUnitLabel('pressure', this.units)}` : undefined,
+            sunriseText,
+            sunsetText,
+            windRoseSvg,
+            windDirDeg,
+            windSpeedKmh,
+            windGustKmh,
+        });
+
+        await this.setStateAsync('html.current', { val: html, ack: true });
+    }
+
+    /**
+     * Fetches the multi-day forecast from Bright Sky and rebuilds the `html.forecast` state.
+     * On failure, keeps showing the last successfully fetched forecast (if any) alongside an
+     * error banner, rather than going blank; see `lib/htmlwidget.ts`'s `buildForecastHtml()`.
+     */
+    private async fetchAndBuildForecastHtml(): Promise<void> {
+        if (!this.htmlWidgetEnabled) {
+            return;
+        }
+        const lat = this.hasValidLocation() ? this.latitude! : DEFAULT_FORECAST_LAT;
+        const lon = this.hasValidLocation() ? this.longitude! : DEFAULT_FORECAST_LON;
+
+        let sunriseHour = DEFAULT_SUNRISE_HOUR;
+        let sunsetHour = DEFAULT_SUNSET_HOUR;
+        if (this.hasValidLocation()) {
+            const sunTimes = getSunriseSunset(new Date(), this.latitude!, this.longitude!);
+            if (sunTimes) {
+                sunriseHour = sunTimes.sunrise.getHours();
+                sunsetHour = sunTimes.sunset.getHours();
+            }
+        }
+        const isDaytime = (hour: number): boolean => hour >= sunriseHour && hour < sunsetHour;
+
+        try {
+            const url = buildBrightSkyUrl(lat, lon, new Date());
+            const response = await this.fetchJson<BrightSkyResponse>(url);
+            const processed = processBrightSkyForecast(response, isDaytime);
+            this.forecastDays = processed.map(day => ({
+                weekday: day.weekday,
+                tempMin: day.tempMin,
+                tempMax: day.tempMax,
+                windMin: day.windMin,
+                windMax: day.windMax,
+                rainfallMm: day.rainfallMm,
+                blockIconUrl: day.blockIconFile.map(fileName =>
+                    fileName ? this.toWidgetIconUrl(`img/weathericons/${fileName}.svg`) : '',
+                ) as ForecastDay['blockIconUrl'],
+                blockTitle: day.blockTitle,
+            }));
+            this.forecastErrorText = undefined;
+        } catch (error) {
+            this.forecastErrorText = `Vorhersage konnte nicht geladen werden: ${(error as Error).message}`;
+            this.log.warn(`Bright Sky forecast fetch failed: ${(error as Error).message}`);
+        }
+
+        const html = buildForecastHtml(this.forecastDays, this.forecastErrorText);
+        await this.setStateAsync('html.forecast', { val: html, ack: true });
     }
 
     /**
@@ -1600,6 +1874,7 @@ class Davis extends utils.Adapter {
                 });
             }
         }
+        this.scheduleHtmlRebuild();
     }
 
     /**
@@ -1652,6 +1927,14 @@ class Davis extends utils.Adapter {
             if (this.realtimeRenewTimer) {
                 this.clearTimeout(this.realtimeRenewTimer);
                 this.realtimeRenewTimer = undefined;
+            }
+            if (this.forecastFetchTimer) {
+                this.clearInterval(this.forecastFetchTimer);
+                this.forecastFetchTimer = undefined;
+            }
+            if (this.htmlRebuildTimer) {
+                this.clearTimeout(this.htmlRebuildTimer);
+                this.htmlRebuildTimer = undefined;
             }
             if (this.udpSocket) {
                 this.udpSocket.close();
