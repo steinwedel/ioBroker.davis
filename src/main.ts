@@ -4,7 +4,14 @@
 
 import * as dgram from 'node:dgram';
 import * as utils from '@iobroker/adapter-core';
-import { computeCloudCoverHeuristic, computeCloudCoverSolar, type CloudCoverModel } from './lib/cloudcover';
+import {
+    clearSkyIrradiance,
+    computeCloudCoverHeuristic,
+    computeCloudCoverSolar,
+    MAX_PLAUSIBLE_HAURWITZ_FACTOR,
+    MIN_SOLAR_ELEVATION_DEG,
+    type CloudCoverModel,
+} from './lib/cloudcover';
 import { discoverWeatherLinkLive } from './lib/discovery';
 import { getSolarElevationDeg, getSunriseSunset } from './lib/sun';
 import { computeWeatherIcon, getWeatherStateLabel, type WeatherState } from './lib/weathericon';
@@ -18,14 +25,7 @@ import { getHeatRiskLevelLabel } from './lib/heatindex';
 import { getDewPointComfortLevelLabel } from './lib/dewpointcomfort';
 import { computeEvapotranspiration } from './lib/evapotranspiration';
 import { updateMinMax, type MinMaxState } from './lib/minmax';
-import {
-    buildWindRoseSvg,
-    buildCurrentConditionsHtml,
-    buildForecastHtml,
-    type WindRoseAnimationState,
-    type ForecastDay,
-} from './lib/htmlwidget';
-import { buildBrightSkyUrl, processBrightSkyForecast, type BrightSkyResponse } from './lib/forecast';
+import { buildWindRoseSvg, buildCurrentConditionsHtml, type WindRoseAnimationState } from './lib/htmlwidget';
 import {
     convertRainCount,
     convertValue,
@@ -546,14 +546,13 @@ const DIRECTION_SPREAD_WINDOW_MS = 5 * 60 * 1000;
  * relevant sensor value changes. The real-time UDP broadcast can update wind readings every
  * ~2.5s; without debouncing, every single one of those would trigger a full HTML rebuild and
  * `setState`, which is unnecessary churn for a value that is only ever displayed to a human.
+ * Combined with rounding insignificant sub-degree/sub-unit noise (see `lib/htmlwidget.ts`) and
+ * only writing the state when the rebuilt HTML actually changed (see `lastCurrentHtml` below),
+ * this keeps most VIS/Jarvis HTML widgets - which typically re-render their entire content on
+ * every single state update, not just ones with an actually different value - from refreshing
+ * far more often than a human would notice a value has changed.
  */
-const HTML_REBUILD_DEBOUNCE_MS = 2000;
-/** Fallback coordinates (Garbsen, Germany) used for the Bright Sky forecast only if no location is configured in the ioBroker system settings */
-const DEFAULT_FORECAST_LAT = 52.4153;
-const DEFAULT_FORECAST_LON = 9.5891;
-/** Fallback sunrise/sunset hours used for the forecast's day/night icon selection if no location is configured */
-const DEFAULT_SUNRISE_HOUR = 6;
-const DEFAULT_SUNSET_HOUR = 20;
+const HTML_REBUILD_DEBOUNCE_MS = 5000;
 
 /**
  * Validates that a value is a plausible transmitter ID before it is used to build an ioBroker object ID.
@@ -595,22 +594,30 @@ class Davis extends utils.Adapter {
     private clearSkyReference: ClearSkyReferenceMap = {};
     /** Recent solar radiation readings, used to smooth out momentary dips (e.g. a passing cloud shadow) */
     private solarRadSamples: TimedSample[] = [];
+    /**
+     * Last successful solar-model cloud cover. Held overnight/at dawn so the adapter does not
+     * fall back to the dew-point heuristic (which treats typical morning humidity as clouds).
+     */
+    private lastSolarCloudCover: number | undefined;
     private units: UnitSystem = 'imperial';
     /** In-memory cache of the day/month/year/absolute min/max tracker state for each `trackMinMax` field, keyed by its state ID; lazily reloaded from persisted states on first use after a restart */
     private readonly minMaxCache = new Map<string, MinMaxState | undefined>();
     /** In-memory rolling window of recent wind direction readings for each `directionRange5Min` field, keyed by its state ID, used to continuously recompute the 5-minute min/max boundary angles */
     private readonly windDirSpreadSamples = new Map<string, TimedSample[]>();
-    /** Whether the `html.current`/`html.forecast` states have been created (see `onReady()`) */
+    /** Whether the `html.current` state has been created (see `onReady()`) */
     private htmlWidgetEnabled = false;
     /** Debounce timer for `scheduleHtmlRebuild()` */
     private htmlRebuildTimer: ReturnType<typeof this.setTimeout> | undefined;
     /** Wind rose animation state, persisted across HTML rebuilds for smooth cross-call animation; see `lib/htmlwidget.ts` */
     private readonly windRoseState: WindRoseAnimationState = {};
-    private forecastFetchTimer: ReturnType<typeof this.setInterval> | undefined;
-    /** Most recently successfully processed forecast days, kept across failed re-fetches so the widget keeps showing the last known forecast instead of going blank */
-    private forecastDays: ForecastDay[] = [];
-    /** Set when the most recent Bright Sky forecast fetch failed; cleared on the next successful fetch. Shown in the widget alongside the (possibly stale) last successful forecast. */
-    private forecastErrorText: string | undefined;
+    /**
+     * Last HTML actually written to `html.current`. Used to skip redundant `setState` calls when
+     * a rebuild produces byte-for-byte identical HTML (e.g. a sensor value that rounds to the
+     * same displayed digit). Most VIS/Jarvis HTML widgets re-render (and thus visually
+     * "jump"/restart any inline SVG animation) on every single state update event, even if the
+     * value didn't change - so avoiding a no-op write here directly avoids that visible stutter.
+     */
+    private lastCurrentHtml: string | undefined;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -684,6 +691,21 @@ class Davis extends utils.Adapter {
             this.log.error('No WeatherLink Live 6100 IP address configured. Please configure the adapter instance.');
             await this.setConnected(false);
             return;
+        }
+
+        const removedLegacyMinMaxCount = await this.cleanupLegacyMinMaxStates();
+        if (removedLegacyMinMaxCount > 0) {
+            this.log.info(
+                `Removed ${removedLegacyMinMaxCount} legacy min/max tracker object(s) from under "sensors.*" ` +
+                    '(now created under the dedicated "minMax.<period>.*" structure instead).',
+            );
+        }
+
+        // The Bright Sky forecast feature (and its `html.forecast` state) has been removed;
+        // clean up the now-obsolete state from any existing installation.
+        if (await this.getObjectAsync('html.forecast')) {
+            await this.delObjectAsync('html.forecast');
+            this.log.info('Removed obsolete "html.forecast" state (Bright Sky forecast feature has been removed).');
         }
 
         if (this.config.htmlWidgetEnabled !== false) {
@@ -811,8 +833,11 @@ class Davis extends utils.Adapter {
      * installed sensors support:
      * - Model A ("solar"): from solar radiation + sun elevation, if a solar sensor and this
      *   adapter's configured latitude/longitude are available and the sun is high enough.
+     *   When the sun is too low, the last successful solar estimate is held instead of
+     *   switching to the dew-point heuristic (morning humidity is not cloud cover).
      * - Model B ("heuristic" / "heuristic+pressure"): from the dew point depression, optionally
      *   refined with the barometric pressure trend if a barometer channel is present.
+     *   Only used when no solar estimate (current or held) is available.
      * If neither model has the sensors it needs, no state is created/updated at all.
      *
      * @param conditions - All condition records from the current poll
@@ -828,15 +853,11 @@ class Davis extends utils.Adapter {
         if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
             const elevationDeg = getSolarElevationDeg(new Date(), this.latitude!, this.longitude!);
             const now = Date.now();
-            if (elevationDeg > 0) {
-                // The clear-sky reference is calibrated from the raw (unsmoothed) reading, so a
-                // brief genuinely-clear moment can still be recorded as the true peak for its bucket.
+            const plausibleMax = clearSkyIrradiance(elevationDeg) * MAX_PLAUSIBLE_HAURWITZ_FACTOR;
+            if (elevationDeg >= MIN_SOLAR_ELEVATION_DEG && iss.solar_rad <= plausibleMax) {
                 this.clearSkyReference = recordObservation(this.clearSkyReference, elevationDeg, iss.solar_rad, now);
                 await this.persistClearSkyReference();
             }
-            // The value fed into the cloud cover calculation itself is smoothed over a short time
-            // window, so a single momentary dip (e.g. a small cloud passing in front of the sun for
-            // under a minute) doesn't swing the reported cloud cover by tens of percentage points.
             const { samples, average: smoothedSolarRad } = addSample(
                 this.solarRadSamples,
                 iss.solar_rad,
@@ -848,6 +869,9 @@ class Davis extends utils.Adapter {
             const percent = computeCloudCoverSolar(smoothedSolarRad, elevationDeg, learnedClearSky);
             if (percent !== undefined) {
                 result = { percent, model: 'solar' };
+                this.lastSolarCloudCover = percent;
+            } else if (this.lastSolarCloudCover !== undefined) {
+                result = { percent: this.lastSolarCloudCover, model: 'solar' };
             }
         }
 
@@ -1120,12 +1144,36 @@ class Davis extends utils.Adapter {
         );
     }
 
-    // ---- "Wetter" HTML widget (current conditions + forecast), see lib/htmlwidget.ts ----
+    /**
+     * One-time cleanup of legacy min/max tracker states/objects that used to live directly under
+     * `sensors.*` (e.g. `sensors.tx1.temperatureDayMin`, `sensors.tx1.windDirLastMin5Min`) before
+     * they were moved to the dedicated `minMax.<period>.*` structure (see `minMaxBaseId()`).
+     * Matches purely by ID suffix, so it also cleans up any now-orphaned tracker states from
+     * fields/trackers that have since been removed entirely from the code (e.g. a stray
+     * `Spread5Min` state from an older version). Safe to run on every start: it is a no-op once
+     * the legacy states are gone.
+     *
+     * @returns The number of legacy objects removed, for logging
+     */
+    private async cleanupLegacyMinMaxStates(): Promise<number> {
+        const legacySuffixPattern =
+            /^sensors\..+(?:(?:Day|Month|Year|Absolute)(?:Min|Max)(?:Time)?|Min5Min|Max5Min|Spread5Min)$/;
+        const allObjects = await this.getAdapterObjectsAsync();
+        const prefix = `${this.namespace}.`;
+        const legacyIds = Object.keys(allObjects)
+            .map(id => (id.startsWith(prefix) ? id.slice(prefix.length) : id))
+            .filter(id => legacySuffixPattern.test(id));
+        for (const id of legacyIds) {
+            await this.delObjectAsync(id);
+        }
+        return legacyIds.length;
+    }
+
+    // ---- "Wetter" HTML widget (current conditions), see lib/htmlwidget.ts ----
 
     /**
-     * Creates the `html.current`/`html.forecast` states (VIS/Jarvis HTML widget content) and
-     * starts the periodic Bright Sky forecast fetch. Called once from `onReady()` if the HTML
-     * widget is enabled in the adapter configuration (enabled by default).
+     * Creates the `html.current` state (VIS/Jarvis HTML widget content). Called once from
+     * `onReady()` if the HTML widget is enabled in the adapter configuration (enabled by default).
      */
     private async setupHtmlWidget(): Promise<void> {
         await this.setObjectNotExistsAsync('html', {
@@ -1144,28 +1192,11 @@ class Davis extends utils.Adapter {
             },
             native: {},
         });
-        await this.setObjectNotExistsAsync('html.forecast', {
-            type: 'state',
-            common: {
-                name: 'Forecast (HTML)',
-                type: 'string',
-                role: 'html',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
         this.htmlWidgetEnabled = true;
-
-        const forecastIntervalMs = Math.max(5, Number(this.config.forecastIntervalMinutes) || 30) * 60 * 1000;
-        await this.fetchAndBuildForecastHtml();
-        this.forecastFetchTimer = this.setInterval(() => {
-            void this.fetchAndBuildForecastHtml();
-        }, forecastIntervalMs);
     }
 
     /**
-     * Resolves an icon file name (see `lib/weathericon.ts`/`lib/forecast.ts`) to a URL usable in
+     * Resolves an icon file name (see `lib/weathericon.ts`) to a URL usable in
      * an `<img src>` from within a VIS/Jarvis HTML widget. Relative `/adapter/<name>/...` paths
      * only resolve correctly if the page hosting the widget is served by the same ioBroker `web`
      * instance; some widget hosts (e.g. Jarvis) instead resolve `<img>` sources relative to their
@@ -1182,16 +1213,24 @@ class Davis extends utils.Adapter {
     }
 
     /**
-     * Debounces a rebuild of the `html.current` state (see `HTML_REBUILD_DEBOUNCE_MS`), so that
-     * bursts of rapid sensor updates (e.g. the real-time UDP broadcast) collapse into a single
-     * rebuild instead of one per individual update.
+     * Throttles rebuilds of the `html.current` state (see `HTML_REBUILD_DEBOUNCE_MS`), so that
+     * bursts of rapid sensor updates (e.g. the real-time UDP broadcast, roughly every 2.5s)
+     * collapse into at most one rebuild per throttle window instead of one per individual update.
+     *
+     * Deliberately a *throttle* (run at most once per window, ignore extra calls while one is
+     * already scheduled) rather than a *debounce* (reset the timer on every call): with a
+     * debounce, a steady stream of updates arriving faster than the window would keep pushing
+     * the rebuild out indefinitely and it would never actually run - which is exactly what
+     * happened with `HTML_REBUILD_DEBOUNCE_MS` (5s) set longer than the ~2.5s real-time
+     * broadcast interval, silently stalling all further widget updates.
      */
     private scheduleHtmlRebuild(): void {
         if (!this.htmlWidgetEnabled) {
             return;
         }
         if (this.htmlRebuildTimer) {
-            this.clearTimeout(this.htmlRebuildTimer);
+            // A rebuild is already scheduled; it will pick up this update too, no need to push it out further.
+            return;
         }
         this.htmlRebuildTimer = this.setTimeout(() => {
             this.htmlRebuildTimer = undefined;
@@ -1263,8 +1302,12 @@ class Davis extends utils.Adapter {
         const windSpeedKmh = await this.safeGetStateVal<number>(`${issChannel}.windSpeedLast`);
         const windGustKmh = await this.safeGetStateVal<number>(`${issChannel}.windSpeedHi10Min`);
         const windDirDeg = await this.safeGetStateVal<number>(`${issChannel}.windDirLast`);
-        const windDirMin5 = await this.safeGetStateVal<number>(`${issChannel}.windDirLastMin5Min`);
-        const windDirMax5 = await this.safeGetStateVal<number>(`${issChannel}.windDirLastMax5Min`);
+        const windDirMin5 = await this.safeGetStateVal<number>(
+            `${this.minMaxBaseId(`${issChannel}.windDirLast`, 'last5Min')}Min`,
+        );
+        const windDirMax5 = await this.safeGetStateVal<number>(
+            `${this.minMaxBaseId(`${issChannel}.windDirLast`, 'last5Min')}Max`,
+        );
         const weatherIconPath = await this.safeGetStateVal<string>('calculated.weatherIcon');
         const weatherStateKey = await this.safeGetStateVal<string>('calculated.weatherState');
 
@@ -1291,68 +1334,30 @@ class Davis extends utils.Adapter {
             temperatureText:
                 temperature !== undefined ? `${temperature}${getUnitLabel('temperature', this.units)}` : undefined,
             weatherStateText: weatherStateKey ? getWeatherStateLabel(weatherStateKey as WeatherState) : '',
-            rainfallTodayText:
-                rainfallToday !== undefined ? `${rainfallToday} ${getRainUnitLabel(this.units)}` : undefined,
-            humidityText: humidity !== undefined ? `${humidity}%` : undefined,
-            pressureText: pressure !== undefined ? `${pressure} ${getUnitLabel('pressure', this.units)}` : undefined,
-            sunriseText,
-            sunsetText,
+            rainfallTodayValue: rainfallToday !== undefined ? String(rainfallToday) : undefined,
+            rainfallTodayUnit: getRainUnitLabel(this.units),
+            humidityValue: humidity !== undefined ? String(humidity) : undefined,
+            humidityUnit: '%',
+            pressureValue: pressure !== undefined ? String(pressure) : undefined,
+            pressureUnit: getUnitLabel('pressure', this.units),
+            sunriseValue: sunriseText,
+            sunriseUnit: 'Uhr',
+            sunsetValue: sunsetText,
+            sunsetUnit: 'Uhr',
             windRoseSvg,
             windDirDeg,
             windSpeedKmh,
             windGustKmh,
         });
 
-        await this.setStateAsync('html.current', { val: html, ack: true });
-    }
-
-    /**
-     * Fetches the multi-day forecast from Bright Sky and rebuilds the `html.forecast` state.
-     * On failure, keeps showing the last successfully fetched forecast (if any) alongside an
-     * error banner, rather than going blank; see `lib/htmlwidget.ts`'s `buildForecastHtml()`.
-     */
-    private async fetchAndBuildForecastHtml(): Promise<void> {
-        if (!this.htmlWidgetEnabled) {
+        // Skip the write entirely if nothing actually changed: most VIS/Jarvis HTML widgets
+        // re-render (and visually "jump"/restart the inline SVG's animations) on every single
+        // state update event, even when the value is byte-for-byte identical to before.
+        if (html === this.lastCurrentHtml) {
             return;
         }
-        const lat = this.hasValidLocation() ? this.latitude! : DEFAULT_FORECAST_LAT;
-        const lon = this.hasValidLocation() ? this.longitude! : DEFAULT_FORECAST_LON;
-
-        let sunriseHour = DEFAULT_SUNRISE_HOUR;
-        let sunsetHour = DEFAULT_SUNSET_HOUR;
-        if (this.hasValidLocation()) {
-            const sunTimes = getSunriseSunset(new Date(), this.latitude!, this.longitude!);
-            if (sunTimes) {
-                sunriseHour = sunTimes.sunrise.getHours();
-                sunsetHour = sunTimes.sunset.getHours();
-            }
-        }
-        const isDaytime = (hour: number): boolean => hour >= sunriseHour && hour < sunsetHour;
-
-        try {
-            const url = buildBrightSkyUrl(lat, lon, new Date());
-            const response = await this.fetchJson<BrightSkyResponse>(url);
-            const processed = processBrightSkyForecast(response, isDaytime);
-            this.forecastDays = processed.map(day => ({
-                weekday: day.weekday,
-                tempMin: day.tempMin,
-                tempMax: day.tempMax,
-                windMin: day.windMin,
-                windMax: day.windMax,
-                rainfallMm: day.rainfallMm,
-                blockIconUrl: day.blockIconFile.map(fileName =>
-                    fileName ? this.toWidgetIconUrl(`img/weathericons/${fileName}.svg`) : '',
-                ) as ForecastDay['blockIconUrl'],
-                blockTitle: day.blockTitle,
-            }));
-            this.forecastErrorText = undefined;
-        } catch (error) {
-            this.forecastErrorText = `Vorhersage konnte nicht geladen werden: ${(error as Error).message}`;
-            this.log.warn(`Bright Sky forecast fetch failed: ${(error as Error).message}`);
-        }
-
-        const html = buildForecastHtml(this.forecastDays, this.forecastErrorText);
-        await this.setStateAsync('html.forecast', { val: html, ack: true });
+        this.lastCurrentHtml = html;
+        await this.setStateAsync('html.current', { val: html, ack: true });
     }
 
     /**
@@ -1538,7 +1543,7 @@ class Davis extends utils.Adapter {
                 // to cover directions the wind never actually blew from.
                 const windSpeedMph = (record as unknown as { wind_speed_last?: number | null }).wind_speed_last;
                 if (typeof windSpeedMph !== 'number' || !isCalmWind(windSpeedMph)) {
-                    await this.updateDirectionRange(stateId, field.name, Number(value));
+                    await this.updateDirectionRange(stateId, field.name, Number(value), channelId, channelName);
                 }
             }
             if (field.uvRiskText) {
@@ -1572,8 +1577,72 @@ class Davis extends utils.Adapter {
                 });
             }
             if (field.trackMinMax && typeof val === 'number') {
-                await this.updateFieldMinMax(stateId, field.name, val);
+                await this.updateFieldMinMax(stateId, field.name, val, channelId, channelName);
             }
+        }
+    }
+
+    /**
+     * Maps an underlying value state's ID (e.g. `sensors.tx1.temperature`) to the base object ID
+     * of its min/max tracker for a given period (e.g. `minMax.day.tx1.temperature`), under the
+     * dedicated top-level `minMax` channel - grouped primarily by period (day/month/year/absolute/
+     * last5Min), then by the originating sensor channel - rather than mixed in directly alongside
+     * the raw sensor readings under `sensors.*`. `<base>Min`/`<base>Max` (and `...Time` for the
+     * day/month/year/absolute periods) are then appended by the caller.
+     *
+     * @param stateId - Object ID of the underlying value state (relative to the adapter namespace, e.g. `sensors.tx1.temperature`)
+     * @param period - The tracker period, e.g. `"day"` or `"last5Min"`
+     * @returns The base object ID for this field's tracker states in that period, e.g. `minMax.day.tx1.temperature`
+     */
+    private minMaxBaseId(stateId: string, period: string): string {
+        const relative = stateId.startsWith('sensors.') ? stateId.slice('sensors.'.length) : stateId;
+        return `minMax.${period}.${relative}`;
+    }
+
+    /**
+     * Creates the `minMax`/`minMax.<period>`/`minMax.<period>.<sensorChannel>` channel objects
+     * (if not already created) that a min/max tracker state for a given period and originating
+     * sensor channel lives under.
+     *
+     * @param period - The tracker period, e.g. `"day"` or `"last5Min"`
+     * @param periodLabel - Display label for the period, e.g. `"Today"` or `"Last 5 minutes"`
+     * @param sensorChannelId - Object ID of the originating sensor channel (relative to the adapter namespace, e.g. `sensors.tx1`)
+     * @param sensorChannelName - Display name of the originating sensor channel, e.g. `"Transmitter 1 (ISS)"`
+     */
+    private async ensureMinMaxChannels(
+        period: string,
+        periodLabel: string,
+        sensorChannelId: string,
+        sensorChannelName: string,
+    ): Promise<void> {
+        const sensorChannelRelativeId = sensorChannelId.startsWith('sensors.')
+            ? sensorChannelId.slice('sensors.'.length)
+            : sensorChannelId;
+        if (!this.knownChannels.has('minMax')) {
+            await this.setObjectNotExistsAsync('minMax', {
+                type: 'channel',
+                common: { name: 'Min/max trackers' },
+                native: {},
+            });
+            this.knownChannels.add('minMax');
+        }
+        const periodChannelId = `minMax.${period}`;
+        if (!this.knownChannels.has(periodChannelId)) {
+            await this.setObjectNotExistsAsync(periodChannelId, {
+                type: 'channel',
+                common: { name: periodLabel },
+                native: {},
+            });
+            this.knownChannels.add(periodChannelId);
+        }
+        const sensorPeriodChannelId = `${periodChannelId}.${sensorChannelRelativeId}`;
+        if (!this.knownChannels.has(sensorPeriodChannelId)) {
+            await this.setObjectNotExistsAsync(sensorPeriodChannelId, {
+                type: 'channel',
+                common: { name: sensorChannelName },
+                native: {},
+            });
+            this.knownChannels.add(sensorPeriodChannelId);
         }
     }
 
@@ -1585,8 +1654,16 @@ class Davis extends utils.Adapter {
      * @param stateId - Object ID of the underlying value state (relative to the adapter namespace)
      * @param fieldName - Display name of the underlying field, used to build the tracker state names
      * @param value - The newly measured value, already converted to the current display unit
+     * @param sensorChannelId - Object ID of the originating sensor channel (relative to the adapter namespace)
+     * @param sensorChannelName - Display name of the originating sensor channel
      */
-    private async updateFieldMinMax(stateId: string, fieldName: string, value: number): Promise<void> {
+    private async updateFieldMinMax(
+        stateId: string,
+        fieldName: string,
+        value: number,
+        sensorChannelId: string,
+        sensorChannelName: string,
+    ): Promise<void> {
         if (!this.minMaxCache.has(stateId)) {
             this.minMaxCache.set(stateId, await this.loadMinMaxState(stateId));
         }
@@ -1594,7 +1671,7 @@ class Davis extends utils.Adapter {
         const updated = updateMinMax(previous, value, new Date());
         this.minMaxCache.set(stateId, updated);
 
-        await this.ensureMinMaxObjects(stateId, fieldName);
+        await this.ensureMinMaxObjects(stateId, fieldName, sensorChannelId, sensorChannelName);
 
         for (const period of MIN_MAX_PERIODS) {
             for (const extreme of ['min', 'max'] as const) {
@@ -1604,9 +1681,10 @@ class Davis extends utils.Adapter {
                     // No new extreme was recorded for this period/extreme combination this poll.
                     continue;
                 }
-                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
-                await this.setStateAsync(`${stateId}${suffix}`, { val: newEntry.value, ack: true });
-                await this.setStateAsync(`${stateId}${suffix}Time`, {
+                const base = this.minMaxBaseId(stateId, period);
+                const valueStateId = `${base}${capitalize(extreme)}`;
+                await this.setStateAsync(valueStateId, { val: newEntry.value, ack: true });
+                await this.setStateAsync(`${valueStateId}Time`, {
                     val: new Date(newEntry.timestamp).toISOString(),
                     ack: true,
                 });
@@ -1620,8 +1698,15 @@ class Davis extends utils.Adapter {
      *
      * @param stateId - Object ID of the underlying value state (relative to the adapter namespace)
      * @param fieldName - Display name of the underlying field, used to build the tracker state names
+     * @param sensorChannelId - Object ID of the originating sensor channel (relative to the adapter namespace)
+     * @param sensorChannelName - Display name of the originating sensor channel
      */
-    private async ensureMinMaxObjects(stateId: string, fieldName: string): Promise<void> {
+    private async ensureMinMaxObjects(
+        stateId: string,
+        fieldName: string,
+        sensorChannelId: string,
+        sensorChannelName: string,
+    ): Promise<void> {
         const marker = `${stateId}DayMin`;
         if (this.knownStates.has(marker)) {
             return;
@@ -1632,10 +1717,17 @@ class Davis extends utils.Adapter {
             year: 'this year',
             absolute: 'ever',
         };
+        const periodChannelLabels: Record<(typeof MIN_MAX_PERIODS)[number], string> = {
+            day: 'Today',
+            month: 'This month',
+            year: 'This year',
+            absolute: 'Absolute (all-time)',
+        };
         for (const period of MIN_MAX_PERIODS) {
+            await this.ensureMinMaxChannels(period, periodChannelLabels[period], sensorChannelId, sensorChannelName);
             for (const extreme of ['min', 'max'] as const) {
-                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
-                const valueStateId = `${stateId}${suffix}`;
+                const base = this.minMaxBaseId(stateId, period);
+                const valueStateId = `${base}${capitalize(extreme)}`;
                 const timeStateId = `${valueStateId}Time`;
                 const extremeLabel = extreme === 'min' ? 'minimum' : 'maximum';
                 await this.setObjectNotExistsAsync(valueStateId, {
@@ -1679,9 +1771,10 @@ class Davis extends utils.Adapter {
         for (const period of MIN_MAX_PERIODS) {
             const bucket: MinMaxState['day'] = {};
             for (const extreme of ['min', 'max'] as const) {
-                const suffix = `${capitalize(period)}${capitalize(extreme)}`;
-                const valueState = await this.getStateAsync(`${stateId}${suffix}`);
-                const timeState = await this.getStateAsync(`${stateId}${suffix}Time`);
+                const base = this.minMaxBaseId(stateId, period);
+                const valueStateId = `${base}${capitalize(extreme)}`;
+                const valueState = await this.getStateAsync(valueStateId);
+                const timeState = await this.getStateAsync(`${valueStateId}Time`);
                 if (typeof valueState?.val === 'number' && typeof timeState?.val === 'string') {
                     const timestamp = new Date(timeState.val).getTime();
                     if (Number.isFinite(timestamp)) {
@@ -1706,8 +1799,16 @@ class Davis extends utils.Adapter {
      * @param stateId - Object ID of the underlying wind direction state (relative to the adapter namespace)
      * @param fieldName - Display name of the underlying field, used to build the tracker state names
      * @param directionDeg - The newly measured wind direction, in degrees
+     * @param sensorChannelId - Object ID of the originating sensor channel (relative to the adapter namespace)
+     * @param sensorChannelName - Display name of the originating sensor channel
      */
-    private async updateDirectionRange(stateId: string, fieldName: string, directionDeg: number): Promise<void> {
+    private async updateDirectionRange(
+        stateId: string,
+        fieldName: string,
+        directionDeg: number,
+        sensorChannelId: string,
+        sensorChannelName: string,
+    ): Promise<void> {
         const previousSamples = this.windDirSpreadSamples.get(stateId) ?? [];
         const { samples } = addSample(previousSamples, directionDeg, Date.now(), DIRECTION_SPREAD_WINDOW_MS);
         this.windDirSpreadSamples.set(stateId, samples);
@@ -1717,9 +1818,11 @@ class Davis extends utils.Adapter {
             return;
         }
 
-        const minStateId = `${stateId}Min5Min`;
-        const maxStateId = `${stateId}Max5Min`;
+        const base = this.minMaxBaseId(stateId, 'last5Min');
+        const minStateId = `${base}Min`;
+        const maxStateId = `${base}Max`;
         if (!this.knownStates.has(minStateId)) {
+            await this.ensureMinMaxChannels('last5Min', 'Last 5 minutes', sensorChannelId, sensorChannelName);
             await this.setObjectNotExistsAsync(minStateId, {
                 type: 'state',
                 common: {
@@ -1927,10 +2030,6 @@ class Davis extends utils.Adapter {
             if (this.realtimeRenewTimer) {
                 this.clearTimeout(this.realtimeRenewTimer);
                 this.realtimeRenewTimer = undefined;
-            }
-            if (this.forecastFetchTimer) {
-                this.clearInterval(this.forecastFetchTimer);
-                this.forecastFetchTimer = undefined;
             }
             if (this.htmlRebuildTimer) {
                 this.clearTimeout(this.htmlRebuildTimer);

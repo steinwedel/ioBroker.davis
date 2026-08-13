@@ -10,7 +10,7 @@
  */
 
 /** Width of each sun-elevation bucket in degrees (coarser buckets need less time to fill, finer buckets are more precise) */
-const ELEVATION_BUCKET_SIZE_DEG = 5;
+export const ELEVATION_BUCKET_SIZE_DEG = 5;
 /** How long a learned maximum stays fully valid before it starts decaying */
 const ROLLING_WINDOW_MS = 15 * 24 * 60 * 60 * 1000;
 /** Daily multiplicative decay applied to a learned maximum once it is older than the rolling window */

@@ -1,12 +1,10 @@
 /**
- * Builds the two HTML snippets shown by the "Wetter" VIS/Jarvis HTML widget:
- *  - the current conditions panel (icon, temperature, wind rose, other current values)
- *  - the multi-day forecast table (fetched from Bright Sky, see `main.ts`)
+ * Builds the HTML shown by the "Wetter" VIS/Jarvis HTML widget: the current conditions panel
+ * (icon, temperature, wind rose, other current values).
  *
  * This module contains only pure, side-effect-free rendering functions; all I/O (reading
- * states, calling the Bright Sky API, persisting animation state across calls) is the
- * responsibility of the adapter (`main.ts`), which is what makes these functions easy to
- * unit-test in isolation.
+ * states, persisting animation state across calls) is the responsibility of the adapter
+ * (`main.ts`), which is what makes these functions easy to unit-test in isolation.
  *
  * Ported from a previous standalone `javascript.0` adapter script of the same purpose; the
  * wind rose animation logic in particular carries over several fixes worked out interactively
@@ -46,6 +44,7 @@ export interface WindRoseAnimationState {
     revealedAtMs?: number;
 }
 
+/** Input values needed to render the wind rose (direction needle + 5-minute arc) */
 export interface WindRoseInput {
     /** Current wind direction in degrees (0-360), as reported by the station (0=N, clockwise) */
     directionDeg: number | undefined;
@@ -165,9 +164,14 @@ export function buildWindRoseSvg(input: WindRoseInput, state: WindRoseAnimationS
     }
 
     // The needle/arc are shown 180° rotated from the raw "blowing from" reading (see doc comment).
-    const directionDeg = (input.directionDeg + 180) % 360;
-    const minDeg = typeof input.minDeg === 'number' ? (input.minDeg + 180) % 360 : undefined;
-    const maxDeg = typeof input.maxDeg === 'number' ? (input.maxDeg + 180) % 360 : undefined;
+    // Rounded to whole degrees (imperceptible for a ~70px-wide needle) so that insignificant
+    // sub-degree sensor noise between otherwise-unchanged readings renders byte-for-byte
+    // identical SVG markup; the caller (see `main.ts`) skips writing the state at all when the
+    // rebuilt HTML is unchanged, so this directly avoids pointless widget refreshes while wind
+    // direction is essentially steady.
+    const directionDeg = Math.round((input.directionDeg + 180) % 360);
+    const minDeg = typeof input.minDeg === 'number' ? Math.round((input.minDeg + 180) % 360) : undefined;
+    const maxDeg = typeof input.maxDeg === 'number' ? Math.round((input.maxDeg + 180) % 360) : undefined;
 
     const size = 100;
     const cx = size / 2;
@@ -200,16 +204,18 @@ export function buildWindRoseSvg(input: WindRoseInput, state: WindRoseAnimationS
         svg += '</path>';
     }
 
-    // Compass point labels (N/O/S/W); N highlighted in white
-    const labels: { deg: number; text: string; color: string }[] = [
-        { deg: 0, text: 'N', color: 'white' },
+    // Compass point labels (N/O/S/W); N highlighted, with a dark outline so the white fill stays
+    // visible regardless of whether the dashboard's background happens to be light or dark
+    const labels: { deg: number; text: string; color: string; outline?: boolean }[] = [
+        { deg: 0, text: 'N', color: 'white', outline: true },
         { deg: 90, text: 'O', color: '#666' },
         { deg: 180, text: 'S', color: '#666' },
         { deg: 270, text: 'W', color: '#666' },
     ];
     for (const label of labels) {
         const lp = toXY(label.deg, r + 9);
-        svg += `<text x='${lp.x}' y='${lp.y + 3}' font-size='9' font-weight='bold' text-anchor='middle' fill='${label.color}'>${label.text}</text>`;
+        const outlineAttrs = label.outline ? " stroke='black' stroke-width='0.6' paint-order='stroke'" : '';
+        svg += `<text x='${lp.x}' y='${lp.y + 3}' font-size='9' font-weight='bold' text-anchor='middle' fill='${label.color}'${outlineAttrs}>${label.text}</text>`;
     }
 
     // Direction needle: drawn facing north (0°) as a fixed template (see buildNeedleMarkup) and
@@ -248,7 +254,7 @@ export function buildWindRoseSvg(input: WindRoseInput, state: WindRoseAnimationS
     return svg;
 }
 
-/** Fully-formatted (unit-labeled) current conditions passed in by the adapter */
+/** Fully-formatted current conditions passed in by the adapter; value/unit are kept separate so the "other current values" table can right-align values and left-align labels/units in their own columns */
 export interface CurrentConditionsHtmlInput {
     /** Whether the adapter currently has a working connection to the WeatherLink Live */
     isConnected: boolean;
@@ -258,16 +264,26 @@ export interface CurrentConditionsHtmlInput {
     temperatureText: string | undefined;
     /** German display text for the current weather condition, e.g. "Bedeckt" */
     weatherStateText: string;
-    /** Formatted rainfall today, e.g. "1.2 mm" */
-    rainfallTodayText: string | undefined;
-    /** Formatted humidity, e.g. "62.1%" */
-    humidityText: string | undefined;
-    /** Formatted air pressure, e.g. "1012.4 hPa" */
-    pressureText: string | undefined;
-    /** Formatted sunrise time, e.g. "05:47" */
-    sunriseText: string | undefined;
-    /** Formatted sunset time, e.g. "21:10" */
-    sunsetText: string | undefined;
+    /** Rainfall today (value only, e.g. "1.2"), unit given separately in `rainfallTodayUnit` */
+    rainfallTodayValue: string | undefined;
+    /** Unit label for `rainfallTodayValue`, e.g. "mm" */
+    rainfallTodayUnit: string;
+    /** Humidity (value only, e.g. "62.1"), unit given separately in `humidityUnit` */
+    humidityValue: string | undefined;
+    /** Unit label for `humidityValue`, e.g. "%" */
+    humidityUnit: string;
+    /** Air pressure (value only, e.g. "1012.4"), unit given separately in `pressureUnit` */
+    pressureValue: string | undefined;
+    /** Unit label for `pressureValue`, e.g. "hPa" */
+    pressureUnit: string;
+    /** Sunrise time (value only, e.g. "05:47"), unit given separately in `sunriseUnit` */
+    sunriseValue: string | undefined;
+    /** Unit label for `sunriseValue`, e.g. "Uhr" */
+    sunriseUnit: string;
+    /** Sunset time (value only, e.g. "21:10"), unit given separately in `sunsetUnit` */
+    sunsetValue: string | undefined;
+    /** Unit label for `sunsetValue`, e.g. "Uhr" */
+    sunsetUnit: string;
     /** Wind rose SVG markup built by `buildWindRoseSvg()`, or `""`/`undefined` if unavailable */
     windRoseSvg: string | undefined;
     /** Raw wind direction in degrees (0-360), for the text readout under the wind rose */
@@ -294,7 +310,7 @@ export function buildCurrentConditionsHtml(input: CurrentConditionsHtmlInput): s
             '</div>';
     }
 
-    text += '<table><tr><td>';
+    text += "<table><tr><td style='vertical-align:top'>";
 
     // Current conditions: icon + temperature + condition text
     text += '<table><tr>';
@@ -303,10 +319,10 @@ export function buildCurrentConditionsHtml(input: CurrentConditionsHtmlInput): s
         text += `<img src='${input.iconUrl}' style='width:100px;height:100px;'>`;
     }
     text += '</td>';
-    text += '<td vertical-align:top>';
+    text += "<td style='vertical-align:top'>";
     text += `<font size='8'>${input.temperatureText ?? '?'}</font></td>`;
     text += '</tr><tr>';
-    text += '<td align=center>';
+    text += "<td colspan='2' align=center>";
     text += input.weatherStateText;
     text += '</td>';
     text += '</tr></table>';
@@ -336,110 +352,34 @@ export function buildCurrentConditionsHtml(input: CurrentConditionsHtmlInput): s
         text += '</div>';
     }
 
-    // Other current values
-    text += "<td vertical-align:top style='border-left: 1px solid Gainsboro'>";
-    text += '<td>';
+    text += '</td>';
+
+    // Other current values: three columns (label, value, unit) - label/unit left-aligned, value
+    // right-aligned, whole table anchored to the top of the row (vertical-align:top) so it
+    // always starts level with the icon/temperature on the left, regardless of how tall the
+    // left column ends up (e.g. with/without the wind rose).
+    text += "<td style='vertical-align:top;border-left:1px solid Gainsboro;padding-left:8px'>";
     text += '<table>';
 
-    const row = (label: string, value: string | undefined): string =>
-        `<tr><td>${label}: </td><td>${value ?? '?'}<br></td></tr>`;
+    const row = (label: string, value: string | undefined, unit: string): string => {
+        const valueText = value ?? '?';
+        const unitText = value !== undefined ? unit : '';
+        return (
+            "<tr><td style='text-align:left;white-space:nowrap'>" +
+            `${label}:</td><td style='text-align:right;padding-left:6px'>${valueText}</td>` +
+            `<td style='text-align:left;padding-left:2px'>${unitText}</td></tr>`
+        );
+    };
 
-    text += row('Niederschlag heute', input.rainfallTodayText);
-    text += row('Feuchte', input.humidityText);
-    text += row('Luftdruck', input.pressureText);
-    text += row('Sonnenaufgang', input.sunriseText ? `${input.sunriseText} Uhr` : undefined);
-    text += row('Sonnenuntergang', input.sunsetText ? `${input.sunsetText} Uhr` : undefined);
+    text += row('Niederschlag heute', input.rainfallTodayValue, input.rainfallTodayUnit);
+    text += row('Feuchte', input.humidityValue, input.humidityUnit);
+    text += row('Luftdruck', input.pressureValue, input.pressureUnit);
+    text += row('Sonnenaufgang', input.sunriseValue, input.sunriseUnit);
+    text += row('Sonnenuntergang', input.sunsetValue, input.sunsetUnit);
 
-    text += '</td></tr>';
     text += '</table>';
     text += '</td>';
-    text += '</td>';
     text += '</tr></table>';
-
-    text += '</tr></table>';
-
-    return text;
-}
-
-/** A single processed forecast day, ready to render as one table row */
-export interface ForecastDay {
-    /** Day of week, 0=Sunday..6=Saturday (JS `Date#getDay()` convention) */
-    weekday: number;
-    tempMin: number;
-    tempMax: number;
-    windMin: number;
-    windMax: number;
-    /** Total rainfall for the day, in mm */
-    rainfallMm: number;
-    /** Icon URL for each of the four 6-hour blocks (00-06/06-12/12-18/18-24), "" if unavailable */
-    blockIconUrl: [string, string, string, string];
-    /** German condition title for each block, used as the icon's tooltip */
-    blockTitle: [string, string, string, string];
-}
-
-const WEEKDAYS_DE = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-
-/**
- * Builds the multi-day forecast HTML table from already-processed forecast days (see
- * `processBrightSkyForecast()` in `main.ts`).
- *
- * @param days - The processed forecast days to render, in chronological order
- * @param errorText - If set (e.g. the last Bright Sky fetch failed and no forecast has ever been
- *   fetched successfully yet), shown instead of a (non-existent) table
- */
-export function buildForecastHtml(days: ForecastDay[], errorText: string | undefined): string {
-    if (days.length === 0) {
-        if (errorText) {
-            return `<div style='color:#c0392b'>${errorText}</div>`;
-        }
-        return '<div>Vorhersage wird geladen...</div>';
-    }
-
-    let text = '';
-    if (errorText) {
-        // A forecast is still shown (from a previous successful fetch), but flagged as possibly stale
-        text +=
-            "<div style='background:#e67e22;color:white;font-size:11px;padding:2px 6px;border-radius:3px;margin-bottom:4px'>" +
-            `${errorText} - zeige zuletzt erfolgreich geladene Vorhersage` +
-            '</div>';
-    }
-
-    text += '<table>';
-    text += '<tr>';
-    text += "<th valign='top'>Tag</th>";
-    text += "<th valign='top'>00-06</th>";
-    text += "<th valign='top'>06-12</th>";
-    text += "<th valign='top'>12-18</th>";
-    text += "<th valign='top'>18-24</th>";
-    text += "<th valign='top'>Temperatur</th>";
-    text += "<th valign='top'>Niederschlag</th>";
-    text += "<th valign='top'>Wind</th>";
-    text += '</tr>';
-
-    for (const day of days) {
-        text += '<tr>';
-        text += `<td>${WEEKDAYS_DE[day.weekday]}</td>`;
-
-        for (let b = 0; b < 4; b++) {
-            if (day.blockIconUrl[b]) {
-                text += `<td><img src='${day.blockIconUrl[b]}' style='width:20px;height:20px;' title='${day.blockTitle[b]}'></td>`;
-            } else {
-                text += '<td></td>';
-            }
-        }
-
-        text += `<td>${Math.round(day.tempMax)}°C/${Math.round(day.tempMin)}°C</td>`;
-
-        const rainRounded = Math.round(day.rainfallMm * 10) / 10;
-        text += `<td>${rainRounded > 0 ? `${rainRounded} mm` : ''}</td>`;
-
-        text += `<td>${Math.round(day.windMin)}-${Math.round(day.windMax)} km/h</td>`;
-        text += '</tr>';
-    }
-    text += '</table>';
-
-    text +=
-        "<br><small>Wetterdaten: <a href='https://www.dwd.de' target='_blank'>Deutscher Wetterdienst</a> via <a href='https://brightsky.dev' target='_blank'>Bright Sky</a></small>";
 
     return text;
 }

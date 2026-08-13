@@ -168,8 +168,7 @@
     "realtimeEnabled": false,
     "realtimeDuration": 90,
     "htmlWidgetEnabled": true,
-    "webBaseUrl": "",
-    "forecastIntervalMinutes": 30
+    "webBaseUrl": ""
   },
   "objects": [],
   "instanceObjects": []

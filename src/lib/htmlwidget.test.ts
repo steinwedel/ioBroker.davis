@@ -1,11 +1,5 @@
 import { expect } from 'chai';
-import {
-    buildWindRoseSvg,
-    buildCurrentConditionsHtml,
-    buildForecastHtml,
-    type WindRoseAnimationState,
-    type ForecastDay,
-} from './htmlwidget';
+import { buildWindRoseSvg, buildCurrentConditionsHtml, type WindRoseAnimationState } from './htmlwidget';
 
 describe('lib/htmlwidget buildWindRoseSvg', () => {
     it('returns an empty string when no direction is available', () => {
@@ -82,11 +76,16 @@ describe('lib/htmlwidget buildCurrentConditionsHtml', () => {
         iconUrl: '/adapter/davis/img/weathericons/clear-day.svg',
         temperatureText: '20.2°C',
         weatherStateText: 'Klar',
-        rainfallTodayText: '1.2 mm',
-        humidityText: '62%',
-        pressureText: '1012 hPa',
-        sunriseText: '05:47',
-        sunsetText: '21:10',
+        rainfallTodayValue: '1.2',
+        rainfallTodayUnit: 'mm',
+        humidityValue: '62',
+        humidityUnit: '%',
+        pressureValue: '1012',
+        pressureUnit: 'hPa',
+        sunriseValue: '05:47',
+        sunriseUnit: 'Uhr',
+        sunsetValue: '21:10',
+        sunsetUnit: 'Uhr',
         windRoseSvg: '<svg></svg>',
         windDirDeg: 90,
         windSpeedKmh: 5,
@@ -117,47 +116,26 @@ describe('lib/htmlwidget buildCurrentConditionsHtml', () => {
         expect(html).to.not.include('90°');
     });
 
+    it('renders the other-values table with separate label/value/unit columns, right-aligning the value', () => {
+        const html = buildCurrentConditionsHtml(baseInput);
+        expect(html).to.include("text-align:right;padding-left:6px'>1.2</td>");
+        expect(html).to.include("text-align:left;padding-left:2px'>mm</td>");
+        expect(html).to.include('Niederschlag heute:');
+    });
+
+    it('anchors both the left and right column to the top of the row', () => {
+        const html = buildCurrentConditionsHtml(baseInput);
+        const cells = html.match(/<td style='vertical-align:top[^']*'>/g) ?? [];
+        expect(cells.length).to.be.at.least(2);
+    });
+
     it('falls back to "?" for missing values instead of showing "undefined"', () => {
-        const html = buildCurrentConditionsHtml({ ...baseInput, temperatureText: undefined, humidityText: undefined });
+        const html = buildCurrentConditionsHtml({
+            ...baseInput,
+            temperatureText: undefined,
+            humidityValue: undefined,
+        });
         expect(html).to.include('?');
         expect(html).to.not.include('undefined');
-    });
-});
-
-describe('lib/htmlwidget buildForecastHtml', () => {
-    const day: ForecastDay = {
-        weekday: 1,
-        tempMin: 10,
-        tempMax: 20,
-        windMin: 5,
-        windMax: 15,
-        rainfallMm: 2.34,
-        blockIconUrl: ['a.svg', '', '', ''],
-        blockTitle: ['Regen', '', '', ''],
-    };
-
-    it('shows a loading message when there are no days and no error', () => {
-        const html = buildForecastHtml([], undefined);
-        expect(html).to.include('wird geladen');
-    });
-
-    it('shows only the error message when there are no days and an error occurred', () => {
-        const html = buildForecastHtml([], 'Netzwerkfehler');
-        expect(html).to.include('Netzwerkfehler');
-        expect(html).to.not.include('<table>');
-    });
-
-    it('renders a table row per day when days are available', () => {
-        const html = buildForecastHtml([day], undefined);
-        expect(html).to.include('<table>');
-        expect(html).to.include('20°C/10°C');
-        expect(html).to.include('2.3 mm');
-        expect(html).to.include('5-15 km/h');
-    });
-
-    it('shows both the last known forecast and a stale-data warning if a later fetch fails', () => {
-        const html = buildForecastHtml([day], 'Netzwerkfehler');
-        expect(html).to.include('Netzwerkfehler');
-        expect(html).to.include('<table>');
     });
 });

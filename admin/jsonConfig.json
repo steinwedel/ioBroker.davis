@@ -110,7 +110,7 @@
         },
         "htmlWidgetInfo": {
             "type": "staticText",
-            "text": "Builds ready-to-use HTML (current conditions with a wind rose, plus an 8-day forecast from Bright Sky/DWD) into html.current/html.forecast, for use in a VIS/Jarvis HTML widget.",
+            "text": "Builds ready-to-use HTML (current conditions with a wind rose) into html.current, for use in a VIS/Jarvis HTML widget.",
             "newLine": true,
             "xs": 12,
             "sm": 12,
@@ -124,17 +124,6 @@
             "xs": 12,
             "sm": 6,
             "md": 4
-        },
-        "forecastIntervalMinutes": {
-            "type": "number",
-            "label": "Forecast refresh interval (minutes)",
-            "min": 5,
-            "max": 1440,
-            "default": 30,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "hidden": "!data.htmlWidgetEnabled"
         },
         "webBaseUrl": {
             "type": "text",
