@@ -4,6 +4,16 @@
 
 Du arbeitest an einem **ioBroker Adapter für Davis Wetterstationen mit der Davis WeatherLink Live 6100** (`ioBroker.davis`).  
 Der Adapter liest die Daten der Wetterstation aus und stellt sie zur verfügung
+
+### Build und Deploy
+
+Zentrale Scripts und `.env` liegen eine Ebene höher (`../scripts/`, `../.env`). Siehe `../AGENTS.md`. Keine adapter-lokalen `scripts/` anlegen.
+
+```bash
+../scripts/deploy.sh
+../scripts/build.sh patch
+```
+
 ---
 
 ## 1. ioBroker-Adapter-Grundregeln

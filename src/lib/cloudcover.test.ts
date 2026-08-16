@@ -22,6 +22,7 @@ describe('lib/cloudcover computeCloudCoverSolar', () => {
     it('returns undefined when the sun is too low above the horizon', () => {
         expect(computeCloudCoverSolar(50, 1)).to.be.undefined;
         expect(computeCloudCoverSolar(200, 7)).to.be.undefined;
+        expect(computeCloudCoverSolar(400, 14)).to.be.undefined;
         expect(computeCloudCoverSolar(0, -5)).to.be.undefined;
     });
 

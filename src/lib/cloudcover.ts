@@ -32,8 +32,12 @@ export interface CloudCoverResult {
     model: CloudCoverModel;
 }
 
-/** Below this sun elevation, the solar model becomes unreliable (dawn/dusk/horizon effects) */
-export const MIN_SOLAR_ELEVATION_DEG = 8;
+/**
+ * Below this sun elevation the solar model is not trustworthy: cosine error, horizon
+ * shading and the steep morning/evening GHI ramp make even a clear sky look overcast.
+ * Estimates from below this angle must not be published or held overnight.
+ */
+export const MIN_SOLAR_ELEVATION_DEG = 15;
 
 /** A historical bucket maximum is the best-ever outlier, not a typical clear day */
 const LEARNED_MAX_TO_TYPICAL = 0.88;

@@ -18,7 +18,8 @@ export default [
             'admin/admin.d.ts',
             'admin/blockly.js',
             '**/adapter-config.d.ts',
-            'widgets/**/*.js'
+            'widgets/**/*.js',
+            '.kilo/**'
         ],
     },
     {
@@ -27,7 +28,7 @@ export default [
         rules: {
             // 'jsdoc/require-jsdoc': 'off',
             // 'jsdoc/require-param': 'off',
-            // 'jsdoc/require-param-description': 'off',
+            'jsdoc/require-param-description': 'off',
             // 'jsdoc/require-returns-description': 'off',
             // 'jsdoc/require-returns-check': 'off',
         },

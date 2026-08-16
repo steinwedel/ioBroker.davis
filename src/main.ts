@@ -595,8 +595,9 @@ class Davis extends utils.Adapter {
     /** Recent solar radiation readings, used to smooth out momentary dips (e.g. a passing cloud shadow) */
     private solarRadSamples: TimedSample[] = [];
     /**
-     * Last successful solar-model cloud cover. Held overnight/at dawn so the adapter does not
-     * fall back to the dew-point heuristic (which treats typical morning humidity as clouds).
+     * Last trusted solar-model cloud cover (only stored when the sun is high enough).
+     * Held overnight/at dawn so the adapter does not invent clouds from dew-point humidity
+     * or from an unreliable low-sun irradiance ratio.
      */
     private lastSolarCloudCover: number | undefined;
     private units: UnitSystem = 'imperial';
@@ -678,6 +679,20 @@ class Davis extends utils.Adapter {
             },
             native: {},
         });
+        await this.setObjectNotExistsAsync('calculated.lastTrustedCloudCover', {
+            type: 'state',
+            common: {
+                name: 'Last trusted solar cloud cover (internal, sun high enough)',
+                type: 'number',
+                role: 'value',
+                unit: '%',
+                min: 0,
+                max: 100,
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
         const clearSkyState = await this.getStateAsync('calculated.clearSkyReference');
         if (typeof clearSkyState?.val === 'string') {
             try {
@@ -685,6 +700,10 @@ class Davis extends utils.Adapter {
             } catch {
                 this.log.debug('Could not parse persisted clear-sky reference data, starting fresh.');
             }
+        }
+        const lastTrustedState = await this.getStateAsync('calculated.lastTrustedCloudCover');
+        if (typeof lastTrustedState?.val === 'number' && lastTrustedState.ack) {
+            this.lastSolarCloudCover = lastTrustedState.val;
         }
 
         if (!this.config.host) {
@@ -833,11 +852,13 @@ class Davis extends utils.Adapter {
      * installed sensors support:
      * - Model A ("solar"): from solar radiation + sun elevation, if a solar sensor and this
      *   adapter's configured latitude/longitude are available and the sun is high enough.
-     *   When the sun is too low, the last successful solar estimate is held instead of
-     *   switching to the dew-point heuristic (morning humidity is not cloud cover).
+     *   When the sun is too low, the last *trusted* solar estimate (sun ≥ 15°) is held.
+     *   Dawn/dusk readings are not published: they look overcast on a clear sky and would
+     *   otherwise be frozen overnight as "cloudy".
      * - Model B ("heuristic" / "heuristic+pressure"): from the dew point depression, optionally
      *   refined with the barometric pressure trend if a barometer channel is present.
-     *   Only used when no solar estimate (current or held) is available.
+     *   Only used when the station has no solar sensor at all. Morning humidity after a
+     *   clear night is not cloud cover, so this must not override a solar station.
      * If neither model has the sensors it needs, no state is created/updated at all.
      *
      * @param conditions - All condition records from the current poll
@@ -850,33 +871,44 @@ class Davis extends utils.Adapter {
 
         let result: { percent: number; model: CloudCoverModel } | undefined;
 
-        if (iss?.solar_rad !== null && iss?.solar_rad !== undefined && this.hasValidLocation()) {
+        const solarRad = iss?.solar_rad;
+        const hasSolarSensor = solarRad !== null && solarRad !== undefined;
+
+        if (hasSolarSensor && this.hasValidLocation()) {
             const elevationDeg = getSolarElevationDeg(new Date(), this.latitude!, this.longitude!);
             const now = Date.now();
             const plausibleMax = clearSkyIrradiance(elevationDeg) * MAX_PLAUSIBLE_HAURWITZ_FACTOR;
-            if (elevationDeg >= MIN_SOLAR_ELEVATION_DEG && iss.solar_rad <= plausibleMax) {
-                this.clearSkyReference = recordObservation(this.clearSkyReference, elevationDeg, iss.solar_rad, now);
+            if (elevationDeg >= MIN_SOLAR_ELEVATION_DEG && solarRad <= plausibleMax) {
+                this.clearSkyReference = recordObservation(this.clearSkyReference, elevationDeg, solarRad, now);
                 await this.persistClearSkyReference();
             }
             const { samples, average: smoothedSolarRad } = addSample(
                 this.solarRadSamples,
-                iss.solar_rad,
+                solarRad,
                 now,
                 SOLAR_RAD_SMOOTHING_WINDOW_MS,
             );
             this.solarRadSamples = samples;
+            const solarForCloud = Math.max(solarRad, smoothedSolarRad);
             const learnedClearSky = getReference(this.clearSkyReference, elevationDeg, now);
-            const percent = computeCloudCoverSolar(smoothedSolarRad, elevationDeg, learnedClearSky);
+            const percent = computeCloudCoverSolar(solarForCloud, elevationDeg, learnedClearSky);
             if (percent !== undefined) {
                 result = { percent, model: 'solar' };
                 this.lastSolarCloudCover = percent;
+                await this.setStateAsync('calculated.lastTrustedCloudCover', { val: percent, ack: true });
             } else if (this.lastSolarCloudCover !== undefined) {
                 result = { percent: this.lastSolarCloudCover, model: 'solar' };
+            } else {
+                // No trusted reading yet this run (just started before the sun is high enough).
+                // Do not fall through to the humidity heuristic and do not keep a stale
+                // dusk estimate: both report "cloudy" on a clear morning.
+                result = { percent: 0, model: 'solar' };
             }
         }
 
         if (
             !result &&
+            !hasSolarSensor &&
             iss?.temp !== null &&
             iss?.temp !== undefined &&
             iss?.dew_point !== null &&

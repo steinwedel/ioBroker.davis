@@ -1,12 +1,13 @@
 # CONTEXT
 
-**Current Task**: Fixed false partly-cloudy/cloudy reports on visually clear days (esp. mornings).
+**Current Task**: Prepare version 0.0.14 for release.
 
 **Key Decisions**:
-- Hold last solar cloud cover at night/dawn; do not fall back to dew-point heuristic.
-- Scale learned bucket max to current elevation; treat max as outlier (0.88); discount Haurwitz (0.82).
-- Heuristic only maps near-saturation to clouds (clear at ≥5 °C depression).
+- The integration test bootstraps JS-Controller 7.2.2 because npm blocks its install script in a clean test directory.
+- ESLint ignores Agent Manager worktrees and does not require JSDoc parameter descriptions.
+- Release news covers the HTML widget, cloud-cover fix, and wind-direction range changes.
 
 **Next Steps**:
-- Verify on a live clear morning (`calculated.cloudCoverModel` should stay `solar`).
-- Watch `calculated.clearSkyReference` after a few clear days.
+- Redeploy and check `weatherState` at ~07:00 (should be clear / last afternoon value).
+- After ~08:15 confirm that the live solar model takes over.
+- Commit, tag, and publish 0.0.14 after successful hardware verification.

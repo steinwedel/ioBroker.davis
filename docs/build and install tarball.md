@@ -17,26 +17,26 @@ iobroker restart davis.0
 
 ---
 
-# Automatisiert: scripts/deploy.sh
+# Automatisiert: ../scripts/deploy.sh
 
 Der obige Ablauf (build → pack → scp → install → upload → restart → Version
-verifizieren) ist in `scripts/deploy.sh` automatisiert. Voraussetzung ist eine
-`.env` im Projekt-Root (siehe Kommentare in `.env` selbst) mit den
-Server-Zugangsdaten (`SERVER_HOST`, `SERVER_USER`, `SERVER_PORT` und entweder
-`SERVER_SSH_KEY_PATH` oder `SERVER_PASSWORD`).
+verifizieren) ist in `../scripts/deploy.sh` automatisiert. Voraussetzung ist die
+`.env` in der Sammlungswurzel (`../.env`) mit `SERVER_HOST`, `SERVER_USER`,
+`SERVER_PORT` und entweder `SERVER_SSH_KEY_PATH` oder `SERVER_PASSWORD`.
+Siehe `../AGENTS.md`.
 
 ```bash
-./scripts/deploy.sh
+../scripts/deploy.sh
 ```
 
-`scripts/build.sh` kombiniert zusätzlich einen Versions-Release
+`../scripts/build.sh` kombiniert zusätzlich einen Versions-Release
 (`npm run release patch|minor|major`, siehe Abschnitt "Versionierung /
 Release" unten) mit dem anschließenden Deploy:
 
 ```bash
-./scripts/build.sh patch          # Release (patch) + Deploy
-./scripts/build.sh --dry-run      # Nur simulieren, nichts committen/pushen/deployen
-./scripts/build.sh --no-deploy minor   # Release (minor), aber ohne Deploy
+../scripts/build.sh patch          # Release (patch) + Deploy
+../scripts/build.sh --dry-run      # Nur simulieren, nichts committen/pushen/deployen
+../scripts/build.sh --no-deploy minor   # Release (minor), aber ohne Deploy
 ```
 
 ---
@@ -108,5 +108,5 @@ Der Release-Vorgang:
 **Voraussetzung:** Vor dem Release muss unter `## **WORK IN PROGRESS**` mindestens
 ein Changelog-Eintrag vorhanden sein, sonst bricht der Release-Vorgang ab.
 
-Im Anschluss an einen Release kann `scripts/deploy.sh` (bzw. gebündelt über
-`scripts/build.sh <bump>`) die neue Version auf den Zielserver ausrollen.
+Im Anschluss an einen Release kann `../scripts/deploy.sh` (bzw. gebündelt über
+`../scripts/build.sh <bump>`) die neue Version auf den Zielserver ausrollen.
