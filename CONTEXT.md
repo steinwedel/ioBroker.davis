@@ -3,7 +3,7 @@
 **Current Task**: Repair the Windows integration-test bootstrap after releasing 0.0.14.
 
 **Key Decisions**:
-- Use `npm.cmd` on Windows; `spawnSync` cannot execute its `.cmd` wrapper as `npm`.
+- Run npm through the Windows command shell; `spawnSync` cannot execute npm's `.cmd` wrapper directly.
 - The integration test bootstraps JS-Controller 7.2.2 because npm blocks its install script in a clean test directory.
 - Version 0.0.14 is committed, tagged, and published.
 

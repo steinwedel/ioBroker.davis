@@ -5,7 +5,6 @@ const path = require('node:path');
 const { tests } = require('@iobroker/testing');
 
 const controllerVersion = '7.2.2';
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const testDirectory = path.join(os.tmpdir(), 'test-iobroker.davis');
 const controllerDirectory = path.join(testDirectory, 'node_modules', 'iobroker.js-controller');
 const systemConfig = path.join(testDirectory, 'iobroker-data', 'iobroker.json');
@@ -16,7 +15,11 @@ if (!fs.existsSync(systemConfig)) {
         path.join(testDirectory, 'package.json'),
         JSON.stringify({ dependencies: { 'iobroker.js-controller': controllerVersion } }),
     );
-    execFileSync(npmCommand, ['install', '--omit=dev'], { cwd: testDirectory, stdio: 'inherit' });
+    execFileSync('npm', ['install', '--omit=dev'], {
+        cwd: testDirectory,
+        shell: process.platform === 'win32',
+        stdio: 'inherit',
+    });
     execFileSync('node', ['iobroker.js', 'setup', 'first', '--console'], {
         cwd: controllerDirectory,
         stdio: 'inherit',
