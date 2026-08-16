@@ -1,12 +1,13 @@
 # CONTEXT
 
-**Current Task**: Repair the Windows integration-test bootstrap after releasing 0.0.14.
+**Current Task**: Configure CI-based npm trusted publishing.
 
 **Key Decisions**:
-- Run npm through the Windows command shell; `spawnSync` cannot execute npm's `.cmd` wrapper directly.
-- The integration test bootstraps JS-Controller 7.2.2 because npm blocks its install script in a clean test directory.
-- Version 0.0.14 is committed, tagged, and published.
+- The deploy workflow uses GitHub OIDC (`id-token: write`) and the `npm-publish` environment.
+- Integration tests must pass before tagged releases deploy.
+- Windows runs npm through the command shell; all CI matrix jobs pass.
 
 **Next Steps**:
-- Watch the GitHub Actions matrix for the Windows CI fix.
+- Configure npm Trusted Publisher for `iobroker.davis` after its initial npm publication.
+- Create and push the next release tag to trigger CI deployment.
 - Redeploy and verify clear-sky behavior around 07:00 and after 08:15.
