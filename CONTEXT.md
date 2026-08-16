@@ -1,13 +1,12 @@
 # CONTEXT
 
-**Current Task**: Prepare version 0.0.14 for release.
+**Current Task**: Repair the Windows integration-test bootstrap after releasing 0.0.14.
 
 **Key Decisions**:
+- Use `npm.cmd` on Windows; `spawnSync` cannot execute its `.cmd` wrapper as `npm`.
 - The integration test bootstraps JS-Controller 7.2.2 because npm blocks its install script in a clean test directory.
-- ESLint ignores Agent Manager worktrees and does not require JSDoc parameter descriptions.
-- Release news covers the HTML widget, cloud-cover fix, and wind-direction range changes.
+- Version 0.0.14 is committed, tagged, and published.
 
 **Next Steps**:
-- Redeploy and check `weatherState` at ~07:00 (should be clear / last afternoon value).
-- After ~08:15 confirm that the live solar model takes over.
-- Commit, tag, and publish 0.0.14 after successful hardware verification.
+- Watch the GitHub Actions matrix for the Windows CI fix.
+- Redeploy and verify clear-sky behavior around 07:00 and after 08:15.
