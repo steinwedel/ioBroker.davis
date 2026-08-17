@@ -10,56 +10,56 @@
 
 **Tests:** ![Test and Release](https://github.com/steinwedel/ioBroker.davis/workflows/Test%20and%20Release/badge.svg)
 
-## Überblick
+## Overview
 
-Dieser Adapter liest Wetterdaten einer **Davis WeatherLink Live 6100 (WLL)** über deren lokale HTTP-API im Heimnetz aus und stellt sie als ioBroker-States bereit. Es wird keine Cloud-Anbindung oder ein Davis-Account benötigt – der Adapter kommuniziert ausschließlich direkt mit dem Gerät im lokalen Netzwerk.
+This adapter reads weather data from a [Davis WeatherLink Live 6100 (WLL)](https://www.davisinstruments.com/products/weatherlink-live) via its local HTTP API on the home network and exposes it as ioBroker states. No cloud connection or Davis account is required — the adapter communicates exclusively directly with the device on the local network.
 
-Da unterschiedliche WeatherLink-Live-Stationen mit unterschiedlichen Sensoren/Transmittern ausgestattet sein können (z. B. mit oder ohne Solarstrahlungssensor, mit oder ohne Boden-/Blattfeuchte-Sensor, mit oder ohne Barometer), legt der Adapter Objekte **dynamisch** nur für die Sensoren an, die die jeweilige Station tatsächlich meldet.
+Since different WeatherLink Live stations can be equipped with different sensors/transmitters (e.g. with or without a solar radiation sensor, with or without a soil/leaf moisture sensor, with or without a barometer), the adapter **dynamically** creates objects only for the sensors that the respective station actually reports.
 
-### Funktionsumfang
+### Features
 
-- Auslesen aller Sensordaten über die lokale API (Abfrage-Intervall konfigurierbar)
-- Echtzeit-Modus über UDP-Broadcast für Wind- und Regendaten (Aktualisierung alle ca. 2,5 Sekunden)
-- Automatische Geräteerkennung im lokalen Netzwerk per mDNS/Bonjour
-- Wahlweise metrische (°C, km/h, hPa, mm) oder imperiale (°F, mph, inHg, in) Einheiten
-- Geschätzter Bewölkungsgrad und ein vereinfachtes aktuelles Wetter-Icon, abgeleitet aus den vorhandenen Sensordaten
+- Reads all sensor data via the local API (polling interval configurable)
+- Real-time mode via UDP broadcast for wind and rain data (updated roughly every 2.5 seconds)
+- Automatic device discovery on the local network via mDNS/Bonjour
+- Metric (°C, km/h, hPa, mm) or imperial (°F, mph, inHg, in) units, selectable
+- Estimated cloud cover and a simplified current weather icon, derived from the available sensor data
 
-## Voraussetzungen
+## Requirements
 
-- Eine Davis WeatherLink Live 6100 (WLL) im selben lokalen Netzwerk wie der ioBroker-Server
-- Node.js ≥ 20 (wird von ioBroker selbst vorgegeben)
-- Für die automatische Geräteerkennung: UDP-Multicast muss im Netzwerk erlaubt sein (in vielen Firmennetzen/VLANs ist das nicht der Fall – dann die IP-Adresse manuell eintragen)
+- A Davis WeatherLink Live 6100 (WLL) on the same local network as the ioBroker server
+- Node.js ≥ 20 (provided by ioBroker itself)
+- For automatic device discovery: UDP multicast must be allowed on the network (this is often not the case in corporate networks/VLANs — in that case enter the IP address manually)
 
-## Installation & Einrichtung
+## Installation & Setup
 
-1. Adapterinstanz `davis.0` über die ioBroker-Admin-Oberfläche anlegen.
-2. In der Instanz-Konfiguration entweder:
-   - auf **„Find WeatherLink Live 6100"** klicken, um das Gerät automatisch im Netzwerk zu finden (IP-Adresse und Port werden automatisch eingetragen), oder
-   - die **IP-Adresse** der WeatherLink Live 6100 manuell eintragen.
-3. Optional das **Abfrageintervall** (Standard: 20 Sekunden, Minimum 10 Sekunden gemäß Davis-API) und die gewünschten **Einheiten** (metrisch/imperial) anpassen.
-4. Optional den **Echtzeit-Modus** aktivieren, um Wind- und Regendaten deutlich häufiger zu erhalten.
-5. Für die Bewölkungs- und Wetter-Icon-Schätzung: Breiten- und Längengrad müssen unter **Hauptseite → Systemeinstellungen** von ioBroker (nicht in der Adapter-Konfiguration selbst) hinterlegt sein.
+1. Create the adapter instance `davis.0` via the ioBroker admin UI.
+2. In the instance configuration, either:
+   - click **"Find WeatherLink Live 6100"** to automatically discover the device on the network (IP address and port are filled in automatically), or
+   - manually enter the **IP address** of the WeatherLink Live 6100.
+3. Optionally adjust the **polling interval** (default: 20 seconds, minimum 10 seconds per the Davis API) and the desired **units** (metric/imperial).
+4. Optionally enable **real-time mode** to receive wind and rain data much more frequently.
+5. For cloud cover and weather icon estimation: latitude and longitude must be configured under **Main page → System settings** in ioBroker (not in the adapter configuration itself).
 
-## Konfiguration
+## Configuration
 
-| Einstellung | Beschreibung |
+| Setting | Description |
 |---|---|
-| WeatherLink Live 6100 IP-Adresse | Lokale IP-Adresse des Geräts, z. B. `192.168.1.50` |
-| Port | TCP-Port der lokalen API (Standard: 80) |
-| „Find WeatherLink Live 6100" | Sucht das Gerät automatisch per mDNS/Bonjour im lokalen Netzwerk |
-| Abfrageintervall (Sekunden) | Wie oft die aktuellen Werte per HTTP abgefragt werden (Minimum 10s) |
-| Einheiten | Metrisch (°C, km/h, hPa, mm) oder Imperial (°F, mph, inHg, in) |
-| Echtzeit-Modus | Aktiviert den UDP-Broadcast für hochfrequente Wind-/Regendaten |
-| Dauer des Echtzeit-Broadcasts | Wie lange eine Aktivierung angefordert wird; wird automatisch erneuert |
+| WeatherLink Live 6100 IP address | Local IP address of the device, e.g. `192.168.1.50` |
+| Port | TCP port of the local API (default: 80) |
+| "Find WeatherLink Live 6100" | Automatically discovers the device via mDNS/Bonjour on the local network |
+| Polling interval (seconds) | How often current values are queried via HTTP (minimum 10s) |
+| Units | Metric (°C, km/h, hPa, mm) or imperial (°F, mph, inHg, in) |
+| Real-time mode | Enables the UDP broadcast for high-frequency wind/rain data |
+| Real-time broadcast duration | How long an activation is requested; renewed automatically |
 
-## Objektstruktur
+## Object structure
 
 ```
 davis.0
 ├── info
-│   └── connection              Verbindungsstatus zur WeatherLink Live 6100
+│   └── connection              Connection status to the WeatherLink Live 6100
 ├── sensors
-│   ├── tx<N>                   Ein Kanal je ISS-Transmitter (Außensensor)
+│   ├── tx<N>                   One channel per ISS transmitter (outdoor sensor)
 │   │   ├── temperature, temperatureFrostWarning, temperature{Day,Month,Year,Absolute}{Min,Max}[Time]
 │   │   ├── humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time]
 │   │   ├── dewPoint, dewPointText, dewPoint{Day,Month,Year,Absolute}{Min,Max}[Time], wetBulb, windChill
@@ -70,164 +70,116 @@ davis.0
 │   │   ├── rainRateLast, rainRateLastText, rainRateHi, rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
 │   │   ├── rainfallDaily, rainfallMonthly, rainfallYear
 │   │   ├── rainStorm, rainStormStartAt, rainStormLast, rainStormLastStartAt, rainStormLastEndAt
-│   │   ├── solarRad, solarRad{Day,Month,Year,Absolute}{Min,Max}[Time]                    (nur falls Solarsensor vorhanden)
-│   │   ├── uvIndex, uvIndexText, uvIndex{Day,Month,Year,Absolute}{Min,Max}[Time]         (nur falls Solarsensor vorhanden)
+│   │   ├── solarRad, solarRad{Day,Month,Year,Absolute}{Min,Max}[Time]                    (only if a solar sensor is present)
+│   │   ├── uvIndex, uvIndexText, uvIndex{Day,Month,Year,Absolute}{Min,Max}[Time]         (only if a solar sensor is present)
 │   │   └── lowBattery, receptionState
-│   ├── soilLeaf<N>              Ein Kanal je Boden-/Blattfeuchte-Transmitter (falls vorhanden)
+│   ├── soilLeaf<N>              One channel per soil/leaf moisture transmitter (if present)
 │   │   └── soilTemp1-4, soilMoisture1-4, leafWetness1-2, lowBattery
-│   ├── barometer                Nur falls ein Barometer-Sensor vorhanden ist
+│   ├── barometer                Only if a barometer sensor is present
 │   │   └── seaLevel, seaLevel{Day,Month,Year,Absolute}{Min,Max}[Time], absolute, trend
-│   └── inside                   Nur falls ein Innensensor vorhanden ist
+│   └── inside                   Only if an indoor sensor is present
 │       └── temperature, temperature{Day,Month,Year,Absolute}{Min,Max}[Time], humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time], dewPoint, heatIndex
 └── calculated
-    ├── cloudCover                Geschätzter Bewölkungsgrad in % (0-100)
-    ├── cloudCoverModel           Welches Modell verwendet wurde (siehe unten)
-    ├── weatherCode               Numerischer Wettercode (siehe Tabelle unten)
-    ├── weatherState              Sprechender Bezeichner des Wetterzustands
-    ├── weatherIcon               Pfad zum passenden Wetter-Icon (SVG)
-    └── evapotranspiration        Geschätzte Referenz-Verdunstung (ETo) des laufenden Tages in mm/Tag
+    ├── cloudCover                Estimated cloud cover in % (0-100)
+    ├── cloudCoverModel           Which model was used (see below)
+    ├── weatherCode               Numeric weather code (see table below)
+    ├── weatherState              Human-readable weather state identifier
+    ├── weatherIcon               Path to the matching weather icon (SVG)
+    └── evapotranspiration        Estimated reference evapotranspiration (ETo) for the current day, in mm/day
 ```
 
-**Wichtig:** Ein Kanal/State wird nur angelegt, wenn die Station den entsprechenden Sensor tatsächlich meldet. Eine Station ohne Solarstrahlungssensor bekommt z. B. keine `solarRad`/`uvIndex`-States, und ohne Barometer entsteht kein `sensors.barometer`-Kanal. Ebenso werden die `calculated.*`-States nur angelegt, wenn genügend Sensordaten für mindestens eine der unten beschriebenen Berechnungsmethoden vorhanden sind.
+**Important:** A channel/state is only created if the station actually reports the corresponding sensor. A station without a solar radiation sensor, for example, gets no `solarRad`/`uvIndex` states, and without a barometer no `sensors.barometer` channel is created. Likewise, the `calculated.*` states are only created if enough sensor data is available for at least one of the calculation methods described below.
 
-`windDirLastText`, `windDirAvg10MinText`, `windDirHi2MinText` und `windDirHi10MinText` enthalten die jeweilige Windrichtung als 16-teilige Kompass-Abkürzung (z. B. `N`, `NNO`, `O`, `SSW`, …), abgeleitet aus `windDirLast`/`windDirAvg10Min`/`windDirHi2Min`/`windDirHi10Min` in Grad.
+`windDirLastText`, `windDirAvg10MinText`, `windDirHi2MinText` and `windDirHi10MinText` contain the respective wind direction as a 16-point compass abbreviation (e.g. `N`, `NNE`, `E`, `SSW`, …), derived from `windDirLast`/`windDirAvg10Min`/`windDirHi2Min`/`windDirHi10Min` in degrees.
 
-`windDirLastMin5Min` und `windDirLastMax5Min` enthalten die beiden Randwinkel des kleinsten Kreisbogens, der alle Windrichtungs-Messwerte der letzten 5 Minuten umschließt (in Grad) – also die "Auslenkung" der Windrichtung in diesem Zeitraum. Im Uhrzeigersinn von `windDirLastMin5Min` nach `windDirLastMax5Min` (ggf. über 360°/0° hinweg, falls `windDirLastMax5Min` kleinerer Wert als `windDirLastMin5Min` ist) liegen alle beobachteten Richtungen. Die Werte werden bei jedem Poll aus einem laufend mitgeführten, gleitenden 5-Minuten-Fenster der letzten Windrichtungs-Messwerte neu berechnet (nicht erst, nachdem 5 Minuten vergangen sind – schon der erste Messwert ergibt sofort `windDirLastMin5Min = windDirLastMax5Min` = den aktuellen Wert, und der Bogen wächst dann kontinuierlich mit jeder neuen Messung, bis das 5-Minuten-Fenster vollständig gefüllt ist). Ein Beispiel: Werte von 350°, 0° und 10° innerhalb der letzten 5 Minuten ergeben `windDirLastMin5Min = 350` und `windDirLastMax5Min = 10` (ein 20°-Bogen über die 0°/360°-Grenze hinweg, nicht die viel größere 340°-Spanne, die eine naive Min/Max-Berechnung ergeben würde). Dieses Fenster wird rein im Arbeitsspeicher gehalten und beginnt nach einem Adapter-Neustart wieder neu – im Gegensatz zu den Tages-/Monats-/Jahres-/Absolut-Minimal-/Maximalwerten (siehe unten) ist das für einen reinen 5-Minuten-Indikator unproblematisch.
+`windDirLastMin5Min` and `windDirLastMax5Min` contain the two boundary angles of the smallest arc (in degrees) that encloses all wind direction readings from the last 5 minutes — i.e. the "spread" of the wind direction during that period. Going clockwise from `windDirLastMin5Min` to `windDirLastMax5Min` (wrapping across 360°/0° if `windDirLastMax5Min` is a smaller value than `windDirLastMin5Min`) covers all observed directions. The values are recalculated on every poll from a continuously maintained sliding 5-minute window of the most recent wind direction readings (not only after 5 minutes have elapsed — the very first reading already yields `windDirLastMin5Min = windDirLastMax5Min` = the current value, and the arc then grows continuously with each new reading until the 5-minute window is fully populated). For example: readings of 350°, 0° and 10° within the last 5 minutes yield `windDirLastMin5Min = 350` and `windDirLastMax5Min = 10` (a 20° arc across the 0°/360° boundary, not the much larger 340° span a naive min/max calculation would produce). This window is kept purely in memory and starts over after an adapter restart — unlike the day/month/year/absolute min/max values (see below), this is not a problem for a pure 5-minute indicator.
 
-`uvIndexText` enthält die UV-Risikokategorie nach der WHO/WMO-Skala (`Niedrig`, `Mäßig`, `Hoch`, `Sehr hoch`, `Extrem`), abgeleitet aus `uvIndex`.
+`uvIndexText` contains the UV risk category according to the WHO/WMO scale (`Low`, `Moderate`, `High`, `Very high`, `Extreme`), derived from `uvIndex`.
 
-`rainRateLastText` enthält die Niederschlagsintensität nach der WMO/NWS-Skala (`Kein Niederschlag`, `Leicht`, `Mäßig`, `Stark`, `Sehr stark`), abgeleitet aus `rainRateLast`.
+`rainRateLastText` contains the precipitation intensity according to the WMO/NWS scale (`No precipitation`, `Light`, `Moderate`, `Heavy`, `Very heavy`), derived from `rainRateLast`.
 
-`heatIndexText` enthält die Hitzewarnkategorie nach der NWS-Heat-Index-Skala (`Keine`, `Vorsicht`, `Erhöhte Vorsicht`, `Gefahr`, `Extreme Gefahr`), abgeleitet aus `heatIndex`.
+`heatIndexText` contains the heat warning category according to the NWS heat index scale (`None`, `Caution`, `Extreme caution`, `Danger`, `Extreme danger`), derived from `heatIndex`.
 
-`dewPointText` enthält die Schwüle-/Komfortkategorie nach der NOAA-Taupunkt-Skala (`Trocken`, `Angenehm`, `Schwül`, `Sehr schwül`), abgeleitet aus `dewPoint`.
+`dewPointText` contains the humidity/comfort category according to the NOAA dew point scale (`Dry`, `Comfortable`, `Humid`, `Very humid`), derived from `dewPoint`.
 
-`temperatureFrostWarning` ist `true`, sobald die aktuelle Temperatur bei oder unter 0 °C liegt (Frost-/Eisbildungsrisiko).
+`temperatureFrostWarning` is `true` as soon as the current temperature is at or below 0 °C (frost/icing risk).
 
-`rainStormStartAt`, `rainStormLastStartAt` und `rainStormLastEndAt` enthalten den jeweiligen Zeitpunkt als ISO-8601-Zeitstempel (z. B. `2026-08-02T00:15:00.000Z`), umgerechnet aus dem von der Station gelieferten UNIX-Zeitstempel.
+`rainStormStartAt`, `rainStormLastStartAt` and `rainStormLastEndAt` contain the respective timestamp as an ISO 8601 timestamp (e.g. `2026-08-02T00:15:00.000Z`), converted from the UNIX timestamp reported by the station.
 
-## Minimal-/Maximalwerte (`<feld>{Day,Month,Year,Absolute}{Min,Max}` / `...Time`)
+## Minimum/maximum values (`<field>{Day,Month,Year,Absolute}{Min,Max}` / `...Time`)
 
-Für die tatsächlich gemessenen Sensorwerte (Temperatur, Luftfeuchte, Taupunkt, Hitzeindex, Windgeschwindigkeit, Solarstrahlung, UV-Index, Luftdruck – jeweils außen wie innen) werden zusätzlich zum aktuellen Wert automatisch die Minimal- und Maximalwerte für den laufenden Tag, den laufenden Monat, das laufende Jahr sowie seit Installation des Adapters ("Absolute") mitgeführt. Für jede dieser acht Kombinationen (4 Zeiträume × Min/Max) gibt es zwei States:
+For the actually measured sensor values (temperature, humidity, dew point, heat index, wind speed, solar radiation, UV index, air pressure — both outdoor and indoor), the minimum and maximum values for the current day, the current month, the current year and since the adapter was installed ("Absolute") are automatically tracked in addition to the current value. For each of these eight combinations (4 periods × min/max) there are two states:
 
-- `<feld>DayMin`, `<feld>MonthMin`, `<feld>YearMin`, `<feld>AbsoluteMin` (und analog `...Max`) – der jeweilige Extremwert, in der aktuell eingestellten Anzeigeeinheit.
-- `<feld>DayMinTime`, `<feld>MonthMinTime`, `<feld>YearMinTime`, `<feld>AbsoluteMinTime` (und analog `...MaxTime`) – der Zeitpunkt, zu dem dieser Extremwert gemessen wurde, als ISO-8601-Zeitstempel.
+- `<field>DayMin`, `<field>MonthMin`, `<field>YearMin`, `<field>AbsoluteMin` (and analogously `...Max`) — the respective extreme value, in the currently configured display unit.
+- `<field>DayMinTime`, `<field>MonthMinTime`, `<field>YearMinTime`, `<field>AbsoluteMinTime` (and analogously `...MaxTime`) — the time at which this extreme value was measured, as an ISO 8601 timestamp.
 
-Beispiel: `sensors.tx1.temperatureDayMax` = `28.4` und `sensors.tx1.temperatureDayMaxTime` = `2026-08-02T15:42:00.000Z` bedeutet: Die höchste heute gemessene Temperatur betrug 28,4 °C, gemessen um 15:42 Uhr UTC.
+Example: `sensors.tx1.temperatureDayMax` = `28.4` and `sensors.tx1.temperatureDayMaxTime` = `2026-08-02T15:42:00.000Z` means: the highest temperature measured today was 28.4 °C, measured at 15:42 UTC.
 
-Tag/Monat/Jahr-Buckets setzen sich beim jeweiligen Kalenderwechsel automatisch zurück (lokale Zeit des Systems, auf dem ioBroker läuft); der "Absolute"-Wert wird nie zurückgesetzt und bleibt über Adapter-Neustarts hinweg erhalten (die Werte werden aus den bestehenden States rekonstruiert). **Hinweis:** Da die Werte in der jeweils aktuell eingestellten Anzeigeeinheit gespeichert werden, führt ein nachträglicher Wechsel der Einheit (Metrisch/Imperial) in den Adaptereinstellungen dazu, dass bereits erfasste Extremwerte weiterhin in der zum Zeitpunkt ihrer Messung gültigen Einheit angezeigt werden.
+The day/month/year buckets reset automatically at the respective calendar change (local time of the system running ioBroker); the "Absolute" value is never reset and is preserved across adapter restarts (the values are reconstructed from the existing states). **Note:** Since the values are stored in the currently configured display unit, later changing the unit (metric/imperial) in the adapter settings means already-recorded extreme values continue to be shown in the unit that was valid at the time they were measured.
 
-## Verdunstungsschätzung (`calculated.evapotranspiration`)
+## Evapotranspiration estimate (`calculated.evapotranspiration`)
 
-Aus der heutigen minimalen und maximalen Außentemperatur (siehe oben) sowie dem in den ioBroker-Systemeinstellungen hinterlegten Breitengrad wird mit der vereinfachten Hargreaves-Samani-Gleichung eine Referenz-Verdunstung (ETo, mm/Tag) geschätzt – der in Bewässerungssystemen gängige Kennwert für den Wasserbedarf von Pflanzen. Die Methode kommt ohne Feuchte-, Wind- oder direkte Strahlungsmessung aus und ist damit deutlich einfacher als das vollständige FAO-56-Penman-Monteith-Verfahren, aber auch entsprechend ungenauer (üblicherweise ±15-20 % Abweichung bei Tagessummen). Voraussetzung: Standort (Breiten-/Längengrad) in den ioBroker-Systemeinstellungen hinterlegt **und** mindestens eine Temperaturmessung für den laufenden Tag vorhanden – der Schätzwert wird über den Tag hinweg genauer, je größer die tatsächlich erfasste Temperaturspanne (Tagesminimum/-maximum) wird.
+From today's minimum and maximum outdoor temperature (see above) and the latitude configured in the ioBroker system settings, a reference evapotranspiration (ETo, mm/day) is estimated using the simplified Hargreaves-Samani equation — the metric commonly used in irrigation systems for plant water demand. This method does not require humidity, wind or direct radiation measurements and is therefore considerably simpler than the full FAO-56 Penman-Monteith method, but also correspondingly less accurate (typically ±15-20% deviation for daily totals). Requirement: location (latitude/longitude) configured in the ioBroker system settings **and** at least one temperature reading for the current day — the estimate becomes more accurate over the course of the day as the actually recorded temperature range (daily minimum/maximum) grows.
 
-## Bewölkungsgrad-Schätzung (`calculated.cloudCover`)
+## Cloud cover estimate (`calculated.cloudCover`)
 
-Da die WeatherLink Live 6100 selbst keinen Bewölkungsgrad liefert, wird er aus den vorhandenen Sensordaten geschätzt. Je nach Ausstattung der Station kommt eines von zwei Modellen zum Einsatz:
+Since the WeatherLink Live 6100 does not report cloud cover itself, it is estimated from the available sensor data. Depending on the station's equipment, one of two models is used:
 
-1. **Solarstrahlungsbasiert** (`cloudCoverModel = "solar"`): Vergleicht die gemessene Solarstrahlung mit einer Klarhimmel-Referenz für den aktuellen Sonnenstand. Voraussetzung: Solarstrahlungssensor vorhanden **und** Breiten-/Längengrad in den ioBroker-Systemeinstellungen hinterlegt **und** die Sonne steht ausreichend hoch (nicht bei Dämmerung/Nacht).
+1. **Solar-radiation-based** (`cloudCoverModel = "solar"`): compares the measured solar radiation against a clear-sky reference for the current sun elevation. Requirement: a solar radiation sensor is present **and** latitude/longitude is configured in the ioBroker system settings **and** the sun is sufficiently high (not during twilight/night).
 
-   Die Klarhimmel-Referenz wird **adaptiv pro Sonnenstand gelernt** (`calculated.clearSkyReference`, intern, Rolling-Fenster 15 Tage): Der Adapter merkt sich je 5°-Sonnenstand-Schritt den höchsten tatsächlich gemessenen Solarstrahlungswert. Dieser Bestwert wird auf den aktuellen Sonnenstand herunterskaliert und als Ausreißer (nicht als typischer Klarhimmel-Tag) behandelt, damit ein visuell klarer, aber etwas dunstiger Morgen nicht als bewölkt erscheint. Bis für einen bestimmten Sonnenstand eigene Messwerte vorliegen, verwendet der Adapter übergangsweise eine konservativ abgesenkte Haurwitz-Formel. Unter 15° Sonnenhöhe (Dämmerung/früher Morgen) ist das Solarmodell unzuverlässig – es wird der letzte vertrauenswürdige Tageswert gehalten, nicht die Taupunkt-Heuristik und nicht ein Dämmerungs-Schätzwert.
-2. **Taupunkt-Heuristik** (`cloudCoverModel = "heuristic"` bzw. `"heuristic+pressure"`): Nur wenn **kein** Solarsensor vorhanden ist. Luftfeuchte nach klarer Nacht ist keine Bewölkung.
+   The clear-sky reference is **learned adaptively per sun elevation** (`calculated.clearSkyReference`, internal, 15-day rolling window): the adapter remembers, per 5° sun elevation step, the highest solar radiation value actually measured. This best value is scaled down to the current sun elevation and treated as an outlier (not as a typical clear-sky day), so that a visually clear but slightly hazy morning does not appear as cloudy. Until actual readings are available for a given sun elevation, the adapter temporarily uses a conservatively reduced Haurwitz formula. Below 15° sun elevation (twilight/early morning) the solar model is unreliable — the last trustworthy daytime value is held instead of falling back to the dew-point heuristic or a twilight estimate.
+2. **Dew-point heuristic** (`cloudCoverModel = "heuristic"` or `"heuristic+pressure"`): used only when **no** solar sensor is present. Humidity after a clear night is not cloud cover.
 
-Ist keines der beiden Modelle mit den vorhandenen Sensoren berechenbar, wird `calculated.cloudCover` gar nicht erst angelegt.
+If neither model can be computed with the available sensors, `calculated.cloudCover` is not created at all.
 
-## Wetter-Icon (`calculated.weatherIcon`)
+## Weather icon (`calculated.weatherIcon`)
 
-Aus dem geschätzten Bewölkungsgrad, der aktuellen Regenrate, der Temperatur und dem Taupunkt wird ein vereinfachtes aktuelles Wetter-Symbol abgeleitet – ähnlich den Wettersymbolen, wie sie z. B. der Deutsche Wetterdienst (DWD) in seinen MOSMIX-Vorhersagen mit dem WMO-„Significant Weather"-Code (`ww`) verwendet. Da eine Wetterstation nur den aktuellen Moment misst (keine Vorhersage), wird eine vereinfachte Auswahl dieser internationalen Code-Kategorien verwendet.
+A simplified current weather symbol is derived from the estimated cloud cover, the current rain rate, the temperature and the dew point — similar to the weather symbols used e.g. by the German Weather Service (DWD) in its MOSMIX forecasts with the WMO "significant weather" code (`ww`). Since a weather station only measures the current moment (no forecast), a simplified selection of these international code categories is used.
 
-Die Icon-Grafiken sind ein Ausschnitt aus [Meteocons](https://github.com/basmilius/meteocons) von Bas Milius (MIT-Lizenz, siehe `admin/img/weathericons/LICENSE`) und liegen lokal im Adapter – es wird keine externe Bildquelle zur Laufzeit benötigt. `calculated.weatherIcon` enthält den Pfad zur jeweiligen SVG-Datei (z. B. `/adapter/davis/img/weathericons/clear-day.svg`), der direkt in VIS-Widgets verwendet werden kann.
+The icon graphics are a subset of [Meteocons](https://github.com/basmilius/meteocons) by Bas Milius (MIT license, see `admin/img/weathericons/LICENSE`) and are bundled locally with the adapter — no external image source is needed at runtime. `calculated.weatherIcon` contains the path to the respective SVG file (e.g. `/adapter/davis/img/weathericons/clear-day.svg`), which can be used directly in VIS widgets.
 
-### Bedeutung des numerischen Wettercodes (`calculated.weatherCode`)
+### Meaning of the numeric weather code (`calculated.weatherCode`)
 
-| Code | `weatherState` | Bedeutung |
+| Code | `weatherState` | Meaning |
 |---|---|---|
-| 0 | `clear` | Klar (Bewölkung ≤ 10 %) |
-| 1 | `mostlyClear` | Überwiegend klar (Bewölkung ≤ 40 %) |
-| 2 | `partlyCloudy` | Teilweise bewölkt (Bewölkung ≤ 70 %) |
-| 3 | `cloudy` | Bewölkt (Bewölkung ≤ 90 %) |
-| 3 | `overcast` | Bedeckt (Bewölkung > 90 %) |
-| 45 | `fog` | Nebel (Taupunkt-Depression ≤ 0,5 °C bei wenig Wind) |
-| 51 | `drizzle` | Leichter Niederschlag (Regenrate ≤ 0,5 mm/h) |
-| 61 | `rain` | Regen |
-| 65 | `heavyRain` | Starker Regen (Regenrate ≥ 4 mm/h) ohne bedeckten Himmel als Gewitterbestätigung |
-| 68 | `sleet` | Schneeregen/gefrierender Regen (Regen bei Temperatur zwischen 0 °C und 2 °C) |
-| 71 | `snow` | Schnee (Regen bei Temperatur ≤ 0 °C) |
-| 75 | `heavySnow` | Starker Schneefall (Regenrate ≥ 2 mm/h bei Temperatur ≤ 0 °C) |
-| 95 | `thunderstorm` | Gewitter-Verdacht (starker Regen plus mindestens ein bzw. bei mehreren verfügbaren Signalen mindestens zwei übereinstimmende Indizien: nahezu bedeckter Himmel, Böenfront-Windspitze oder starker Druckabfall) |
+| 0 | `clear` | Clear (cloud cover ≤ 10%) |
+| 1 | `mostlyClear` | Mostly clear (cloud cover ≤ 40%) |
+| 2 | `partlyCloudy` | Partly cloudy (cloud cover ≤ 70%) |
+| 3 | `cloudy` | Cloudy (cloud cover ≤ 90%) |
+| 3 | `overcast` | Overcast (cloud cover > 90%) |
+| 45 | `fog` | Fog (dew point depression ≤ 0.5 °C with little wind) |
+| 51 | `drizzle` | Light precipitation (rain rate ≤ 0.5 mm/h) |
+| 61 | `rain` | Rain |
+| 65 | `heavyRain` | Heavy rain (rain rate ≥ 4 mm/h) without an overcast sky as thunderstorm confirmation |
+| 68 | `sleet` | Sleet/freezing rain (rain at temperature between 0 °C and 2 °C) |
+| 71 | `snow` | Snow (rain at temperature ≤ 0 °C) |
+| 75 | `heavySnow` | Heavy snowfall (rain rate ≥ 2 mm/h at temperature ≤ 0 °C) |
+| 95 | `thunderstorm` | Suspected thunderstorm (heavy rain plus at least one, or when several signals are available at least two matching indicators: near-overcast sky, gust-front wind spike, or a sharp pressure drop) |
 
-Die Codes orientieren sich an der WMO-Tabelle 4677/4680 (dieselbe Klassifikation, die auch DWD-MOSMIX-Daten zugrunde liegt), sind aber auf die aus einer einzelnen Momentaufnahme zuverlässig ableitbaren Kategorien reduziert. Feinere Abstufungen der internationalen Tabelle (z. B. „Gewitter in der letzten Stunde, aktuell vorbei" oder eine sichere Unterscheidung zwischen Schneeregen und gefrierendem Regen) lassen sich aus reinen Stationsmessungen nicht bestimmen. Die Kategorien `cloudy` und `overcast` teilen sich den WMO-Code 3, da die klassische Tabelle dafür keine getrennten Codes vorsieht – zur Unterscheidung dient der `weatherState`-Text bzw. das jeweilige Icon. Bei Niederschlag ohne (nahezu) bedeckten Himmel wird zusätzlich eine „teilweise bewölkt + Niederschlag"-Icon-Variante verwendet, sofern vorhanden.
+The codes follow the WMO table 4677/4680 (the same classification underlying DWD MOSMIX data), but are reduced to the categories that can reliably be derived from a single snapshot. Finer distinctions of the international table (e.g. "thunderstorm in the last hour, currently over" or a reliable distinction between sleet and freezing rain) cannot be determined from station measurements alone. The `cloudy` and `overcast` categories share WMO code 3, since the classic table does not provide separate codes for them — the `weatherState` text and the respective icon are used to distinguish them. When precipitation occurs without a (near-)overcast sky, a "partly cloudy + precipitation" icon variant is used instead, if available.
 
-Die WeatherLink Live 6100 unterstützt (im Gegensatz zur älteren Vantage Pro2/Vue-Serie oder der WeatherLink-Cloud/AirLink) keinen Blitzsensor, Gewitter können daher nie direkt erkannt werden, sondern nur anhand begleitender Indizien vermutet werden: starker Regen plus mindestens ein bestätigendes Signal (nahezu bedeckter Himmel, ein Böenfront-Windsprung zwischen der 2-Minuten-Spitze und dem 10-Minuten-Mittelwind, oder ein starker 3-Stunden-Druckabfall am Barometer). Sind mehrere dieser Signale verfügbar, müssen mindestens zwei übereinstimmen, damit ein einzelnes mehrdeutiges Signal (z. B. nur ein bedeckter Himmel, der auch bei gewöhnlichem Landregen auftritt) nicht allein ausreicht.
+The WeatherLink Live 6100 does not support a lightning sensor (unlike the older Vantage Pro2/Vue series or the WeatherLink Cloud/AirLink), so thunderstorms can never be detected directly, only suspected from accompanying indicators: heavy rain plus at least one confirming signal (a near-overcast sky, a gust-front wind jump between the 2-minute peak and the 10-minute average wind, or a sharp 3-hour pressure drop on the barometer). If several of these signals are available, at least two must agree, so that a single ambiguous signal (e.g. only an overcast sky, which also occurs during ordinary steady rain) is not sufficient on its own.
 
-`calculated.weatherCode`/`weatherIcon`/`weatherState` werden nur angelegt, wenn mindestens der Bewölkungsgrad **oder** eine aktive Regenmessung vorliegt.
+`calculated.weatherCode`/`weatherIcon`/`weatherState` are only created if at least the cloud cover **or** an active rain measurement is available.
 
-## Einheiten und Regenmengen
+## Units and rainfall amounts
 
-Die WeatherLink Live 6100 liefert alle Werte grundsätzlich in imperialen Einheiten (°F, mph, inHg). Bei aktivierter „Metrisch"-Einstellung rechnet der Adapter Temperatur, Windgeschwindigkeit und Luftdruck vor dem Speichern um. Regenwerte werden anhand der vom Gerät gemeldeten Wippengröße (`rain_size`) von rohen Kippzählern in eine physikalische Regenmenge (mm bzw. Zoll) umgerechnet.
+The WeatherLink Live 6100 always reports all values in imperial units (°F, mph, inHg). When "Metric" is enabled, the adapter converts temperature, wind speed and air pressure before storing them. Rain values are converted from raw tip counts into a physical rainfall amount (mm or inches) based on the tip size (`rain_size`) reported by the device.
 
-## Bekannte Einschränkungen
+## Known limitations
 
-- Die Bewölkungs- und Wetter-Icon-Schätzung sind **Näherungen**, keine Messungen. Das solarstrahlungsbasierte Modell erreicht üblicherweise ±10–15 % Genauigkeit bei Tageslicht; die Taupunkt-Heuristik ist deutlich gröber und eher als Trendindikator zu verstehen.
-- Ohne konfigurierten Standort (Breiten-/Längengrad) in den ioBroker-Systemeinstellungen funktioniert nur die Taupunkt-Heuristik, nicht das genauere solarstrahlungsbasierte Modell.
-- Die automatische Geräteerkennung funktioniert nur, wenn UDP-Multicast im lokalen Netzwerk nicht blockiert wird.
+- The cloud cover and weather icon estimates are **approximations**, not measurements. The solar-radiation-based model typically achieves ±10-15% accuracy during daylight; the dew-point heuristic is considerably rougher and should be understood as a trend indicator rather than a precise value.
+- Without a configured location (latitude/longitude) in the ioBroker system settings, only the dew-point heuristic works, not the more accurate solar-radiation-based model.
+- Automatic device discovery only works if UDP multicast is not blocked on the local network.
 
 ## Changelog
-### 0.0.14 (2026-08-16)
-* (steinwedel) **NEW**: Added an optional `html.current` dashboard widget with current conditions, a wind rose, and a weather forecast.
-* (steinwedel) **FIXED**: Clear skies were reported as cloudy again in the early morning: the solar model is not trustworthy below ~15° sun elevation (cosine error, horizon, GHI ramp), and holding the last dusk reading or falling back to dew-point humidity both freeze "bewölkt" overnight. Trusted solar estimates are now only taken at ≥ 15°, persisted separately, and used until then; a solar station never uses the humidity heuristic.
-* (steinwedel) **CHANGED**: The wind direction spread indicator now exposes the arc's two boundary angles (windDirLastMin5Min/windDirLastMax5Min) instead of a single opening-angle number, so the actual observed direction range can be shown, not just its size
-* (steinwedel) **FIXED**: Wind direction range tracking no longer includes readings taken during calm wind, since a vane's direction becomes unreliable noise at near-zero speed and could otherwise make the tracked 5-minute range balloon out to a spurious value (e.g. 0°) the wind never actually blew from
 
-### 0.0.13 (2026-08-02)
-* (steinwedel) **NEW**: Rain intensity, frost warning, heat risk and dew point comfort categories, day and month minimum and maximum tracking, an evapotranspiration estimate, and a wind direction spread indicator, derived from existing sensor data
-
-### 0.0.12 (2026-08-01)
-* (steinwedel) **CHANGED**: A failed real-time broadcast activation is now only logged as a warning after 3 consecutive failed attempts (transient failures before that are logged at debug level only), since occasional single activation failures against the WeatherLink Live are normal and self-recover on the next retry
-
-### 0.0.11 (2026-07-30)
-* (steinwedel) **FIXED**: The solar-based cloud cover model now averages solar radiation readings over a 5-minute window before computing the clear-sky index, instead of using only the single most recent reading. A single brief cloud shadow (well under a minute) could otherwise swing the reported cloud cover by tens of percentage points even though the overall sky condition had not changed (observed e.g. 39% instead of ~0% during a momentary dip). The site-learned clear-sky reference calibration itself is unaffected and still uses the raw (unsmoothed) peak reading.
-
-### 0.0.10 (2026-07-30)
-* (steinwedel) **NEW**: Added `wind.svg`, `sleet.svg` and `hail.svg` to the bundled weather icon set (`admin/img/weathericons/`), covering the full Bright Sky/DWD icon vocabulary for external scripts/widgets that reuse these icons
-
-### 0.0.9 (2026-07-30)
-* (steinwedel) **NEW**: `sensors.tx<N>.windDirLastText` - current wind direction as a 16-point compass abbreviation (e.g. "N", "NNO", "O", "SSW"), derived from `windDirLast`
-
-### 0.0.8 (2026-07-30)
-* (steinwedel) **FIXED**: The solar-based cloud cover model now learns a site-specific clear-sky reference per sun elevation angle (persisted in `calculated.clearSkyReference`) instead of relying solely on the generic Haurwitz formula, which could overestimate the theoretically achievable clear-sky irradiance and thus report cloud cover on genuinely clear days (observed e.g. 14% instead of 0% at 28° sun elevation)
-
-### 0.0.7 (2026-07-30)
-* (steinwedel) **CHANGED**: Vollständiger Gerätename "Davis WeatherLink Live 6100" statt nur "Davis WeatherLink Live" in Dokumentation, Admin-UI-Texten und Adapter-Beschreibung verwendet
-
-### 0.0.6 (2026-07-30)
-* (steinwedel) **CHANGED**: README komplett überarbeitet: Entwickler-Boilerplate entfernt, echte Nutzerdokumentation (Installation, Konfiguration, Objektstruktur, Bewölkungs-/Wetter-Icon-Modelle, Wettercode-Tabelle) ergänzt
-
-### 0.0.5 (2026-07-30)
-* (steinwedel) **CHANGED**: Calculated/derived values (`cloudCover`, `cloudCoverModel`, `weatherCode`, `weatherState`, `weatherIcon`) moved from `sensors.*` into a dedicated `calculated.*` folder, to keep them separate from the raw per-transmitter sensor channels. Existing installations should delete the old `sensors.cloudCover*`/`sensors.weather*` states, as they are no longer updated.
-
-### 0.0.4 (2026-07-30)
-* (steinwedel) **NEW**: Simplified current-weather icon (`sensors.weatherCode`, `sensors.weatherState`, `sensors.weatherIcon`) derived from cloud cover, rain rate, temperature and dew point, using a WMO-`ww`-code-inspired classification (in the spirit of DWD's MOSMIX significant weather codes). Icon graphics are a bundled MIT-licensed subset of [Meteocons](https://github.com/basmilius/meteocons) by Bas Milius (see `admin/img/weathericons/LICENSE`). No value is created unless the required sensors/estimates are available.
-* (steinwedel) **FIXED**: The dew-point-based cloud cover heuristic now correctly converts temperature/dew point (°F->°C) and the barometric pressure trend (inHg->hPa) before applying its thresholds; previously the raw imperial values were used directly, which skewed the estimate
-* (steinwedel) **CHANGED**: Latitude/longitude for the solar-based cloud cover model and day/night icon detection are now taken from ioBroker's system-wide location setting (Admin -> System settings) instead of a separate adapter configuration field
-
-### 0.0.3 (2026-07-30)
-* (steinwedel) **NEW**: Estimated cloud cover (`sensors.cloudCover`, `sensors.cloudCoverModel`), using a solar-radiation clear-sky index when a solar sensor and location (latitude/longitude) are configured, falling back to a rougher dew-point-based heuristic (optionally refined with the barometric pressure trend if a barometer is present) otherwise. No value is created if neither model's required sensors are present.
-
-### 0.0.2 (2026-07-29)
-* (steinwedel) **NEW**: Initial implementation using the WeatherLink Live Local API (`/v1/current_conditions` polling) with dynamic object creation adapting to the transmitters/sensors actually configured on the station
-* (steinwedel) **NEW**: Real-time mode via `/v1/real_time` UDP broadcast (port 22222) for high-frequency wind/rain updates
-* (steinwedel) **NEW**: "Find WeatherLink Live" button in the admin UI that discovers the device via mDNS/Bonjour (`_weatherlinklive._tcp.local`) and automatically fills in its IP address and port
-* (steinwedel) **NEW**: Configurable unit system (metric °C/km/h/hPa or imperial °F/mph/inHg); the Local API always reports imperial values, which are converted before being stored when "Metric" is selected
-* (steinwedel) **NEW**: Rain fields are converted from raw tip counts to a physical rainfall depth (mm/mm per hour when metric, inches/inches per hour when imperial), using the collector's tip size (`rain_size`) reported by the device
-
-### 0.0.1
-* (steinwedel) initial release
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 MIT License
 
-Copyright (c) 2026 steinwedel <steinwedel@example.com>
+Copyright (c) 2026 steinwedel <github.com@steinwedel.de>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

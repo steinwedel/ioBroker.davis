@@ -4,7 +4,7 @@
   "description": "Adapter for Davis WeatherLink Live 6100 weather stations (local API)",
   "author": {
     "name": "steinwedel",
-    "email": "steinwedel@example.com"
+    "email": "github.com@steinwedel.de"
   },
   "contributors": [],
   "homepage": "https://github.com/steinwedel/ioBroker.davis",
