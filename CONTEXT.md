@@ -1,12 +1,12 @@
 # CONTEXT
 
-**Current Task**: Publish version 0.0.14 and enable CI-based npm trusted publishing.
+**Current Task**: Complete ioBroker "latest" repository submission requirements for davis.
 
 **Key Decisions**:
-- Version 0.0.14 is published as npm `latest`.
-- npm Trusted Publisher authorizes `steinwedel/ioBroker.davis` via `test-and-release.yml` and the `npm-publish` environment.
-- Integration tests must pass before tagged releases deploy.
+- v0.0.15 published to npm via OIDC trusted publishing (validated end-to-end on tag push); `bluefox` added as npm co-owner.
+- README.md translated to English (mandatory) with manufacturer link; changelog moved to its own CHANGELOG.md.
+- GitHub topics set (`iobroker`, `davis`, `weather`, ...); PR opened: ioBroker/ioBroker.repositories#6466 (addToLatest).
 
 **Next Steps**:
-- Create and push the next release tag to validate OIDC publishing.
+- Track/merge ioBroker.repositories PR #6466; then plan forum test thread for stable submission.
 - Redeploy and verify clear-sky behavior around 07:00 and after 08:15.
