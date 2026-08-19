@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.16",
+    "version": "0.0.17",
     "news": {
+      "0.0.17": {
+        "en": "**FIXED**: Adapter checker: `common.nogit` spelling, `@tsconfig/node22`, release-script `manual-review` plugin, and Dependabot auto-merge workflow",
+        "de": "**BEHOBEN**: Adapterprüfung: Rechtschreibfehler bei `common.nogit`, `@tsconfig/node22`, Release-Skript-Plugin `manual-review` und Dependabot-Workflow für automatisches Zusammenführen",
+        "ru": "**ИСПРАВЛЕНО**: Проверка адаптера: орфографическая ошибка в `common.nogit`, `@tsconfig/node22`, плагин `manual-review` скрипта релиза и рабочий процесс автоматического слияния Dependabot.",
+        "pt": "**CORRIGIDO**: Verificador de adaptadores: ortografia de `common.nogit`, `@tsconfig/node22`, plugin `manual-review` do script de lançamento e fluxo de trabalho de mesclagem automática do Dependabot",
+        "nl": "**OPGELOST**: Adaptercontrole: spelling van `common.nogit`, `@tsconfig/node22`, release-script `manual-review` plugin en Dependabot auto-merge workflow",
+        "fr": "**CORRIGÉ** : Vérificateur d’adaptateurs : orthographe de `common.nogit`, `@tsconfig/node22`, plugin `manual-review` du script de publication et flux de travail de fusion automatique de Dependabot",
+        "it": "**RISOLTO**: Controllo adattatore: ortografia di `common.nogit`, `@tsconfig/node22`, plugin `manual-review` dello script di rilascio e flusso di lavoro di unione automatica di Dependabot",
+        "es": "**CORREGIDO**: Comprobador de adaptadores: ortografía de `common.nogit`, `@tsconfig/node22`, complemento `manual-review` del script de lanzamiento y flujo de trabajo de fusión automática de Dependabot.",
+        "pl": "**NAPRAWIONO**: Sprawdzanie adapterów: pisownia w `common.nogit`, `@tsconfig/node22`, wtyczka `manual-review` w wersji skryptu i automatyczny przepływ pracy scalania Dependabot",
+        "uk": "**ВИПРАВЛЕНО**: Перевірка адаптера: помилки у правописі `common.nogit`, `@tsconfig/node22`, плагін `manual-review` для release-script та робочий процес автоматичного об'єднання Dependabot",
+        "zh-cn": "**已修复**：适配器检查器：`common.nogit` 拼写错误、`@tsconfig/node22`、发布脚本 `manual-review` 插件以及 Dependabot 自动合并工作流"
+      },
       "0.0.16": {
         "en": "**FIXED**: Adapter checker findings: Node.js >=22, ioBroker keyword, admin >=7.6.20, news for unpublished versions removed, adapter timers instead of Node setTimeout, missing admin i18n files, jsonConfig sizes/translation keys, README changelog format, and common.noGit",
         "de": "**BEHOBEN**: Ergebnisse der Adapterprüfung: Node.js >=22, ioBroker-Schlüsselwort, Admin >=7.6.20, Meldungen für unveröffentlichte Versionen entfernt, Adapter-Timer anstelle von Node.js setTimeout, fehlende Admin-i18n-Dateien, jsonConfig-Größen/Übersetzungsschlüssel, README-Changelog-Format und common.noGit",
@@ -107,7 +120,7 @@
         "admin": ">=7.6.20"
       }
     ],
-    "noGit": true
+    "nogit": true
   },
   "native": {
     "host": "",

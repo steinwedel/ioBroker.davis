@@ -1,10 +1,11 @@
 # CONTEXT
 
-**Current Task**: Restore green Test-and-Release badge after Dependabot TypeScript 7 PR.
+**Current Task**: Fix remaining adapter-checker items after v0.0.16.
 
 **Key Decisions**:
-- Workflow badge is pinned to `branch=main` so failed PR runs do not turn it red.
-- Dependabot ignores TypeScript major bumps; PR #3 (TS 7.0.2) was closed.
+- `common.nogit` (lowercase) is the schema-valid flag; `noGit` is rejected.
+- Switched to `@tsconfig/node22` and added `"types": ["node", "mocha"]`.
+- `manual-review` is back in `.releaseconfig.json`; Dependabot auto-merge workflow added.
 
 **Next Steps**:
 - W4001 stays until ioBroker.repositories PR #6466 is merged.

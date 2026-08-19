@@ -1,6 +1,6 @@
 {
   "name": "iobroker.davis",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "Adapter for Davis WeatherLink Live 6100 weather stations (local API)",
   "author": {
     "name": "steinwedel",
@@ -34,8 +34,9 @@
     "@iobroker/adapter-dev": "^1.5.0",
     "@iobroker/eslint-config": "^2.3.4",
     "@iobroker/testing": "^5.3.0",
-    "@tsconfig/node20": "^20.1.9",
+    "@tsconfig/node22": "^22.0.6",
     "@types/iobroker": "npm:@iobroker/types@^7.2.2",
+    "@types/mocha": "^10.0.10",
     "@types/multicast-dns": "^7.2.4",
     "@types/node": "^20.19.43",
     "rimraf": "^6.1.3",
