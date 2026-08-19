@@ -8,7 +8,7 @@
 
 [![NPM](https://nodei.co/npm/iobroker.davis.png?downloads=true)](https://nodei.co/npm/iobroker.davis/)
 
-**Tests:** ![Test and Release](https://github.com/steinwedel/ioBroker.davis/workflows/Test%20and%20Release/badge.svg)
+**Tests:** ![Test and Release](https://github.com/steinwedel/ioBroker.davis/actions/workflows/test-and-release.yml/badge.svg?branch=main)
 
 ## Overview
 
