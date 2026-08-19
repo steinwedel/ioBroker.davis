@@ -177,7 +177,8 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.18 (2026-08-19)
+* (steinwedel) **FIXED**: Removed redundant `@types/mocha` from devDependencies (already provided by `@iobroker/testing`)
 
 ### 0.0.17 (2026-08-19)
 * (steinwedel) **FIXED**: Adapter checker: `common.nogit` spelling, `@tsconfig/node22`, release-script `manual-review` plugin, and Dependabot auto-merge workflow

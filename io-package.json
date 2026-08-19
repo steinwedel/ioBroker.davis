@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.17",
+    "version": "0.0.18",
     "news": {
+      "0.0.18": {
+        "en": "**FIXED**: Removed redundant `@types/mocha` from devDependencies (already provided by `@iobroker/testing`)",
+        "de": "**BEHOBEN**: Überflüssiges `@types/mocha` aus den devDependencies entfernt (wird bereits von `@iobroker/testing` bereitgestellt)",
+        "ru": "**ИСПРАВЛЕНО**: Удален избыточный `@types/mocha` из devDependencies (уже предоставленный `@iobroker/testing`).",
+        "pt": "**CORRIGIDO**: Removido o `@types/mocha` redundante das devDependencies (já fornecido por `@iobroker/testing`)",
+        "nl": "**OPGELOST**: Overbodige `@types/mocha` verwijderd uit devDependencies (wordt al geleverd door `@iobroker/testing`)",
+        "fr": "**CORRIGÉ** : Suppression de la dépendance redondante `@types/mocha` des dépendances de développement (déjà fournie par `@iobroker/testing`).",
+        "it": "**RISOLTO**: Rimossa la dipendenza ridondante `@types/mocha` da devDependencies (già fornita da `@iobroker/testing`)",
+        "es": "**CORREGIDO**: Se eliminó la dependencia redundante `@types/mocha` de devDependencies (ya proporcionada por `@iobroker/testing`).",
+        "pl": "**NAPRAWIONO**: Usunięto zbędny `@types/mocha` z devDependencies (już dostarczony przez `@iobroker/testing`)",
+        "uk": "**ВИПРАВЛЕНО**: Видалено надлишкові `@types/mocha` з devDependencies (вже надані `@iobroker/testing`)",
+        "zh-cn": "**已修复**：从 devDependencies 中移除冗余的 `@types/mocha`（已由 `@iobroker/testing` 提供）。"
+      },
       "0.0.17": {
         "en": "**FIXED**: Adapter checker: `common.nogit` spelling, `@tsconfig/node22`, release-script `manual-review` plugin, and Dependabot auto-merge workflow",
         "de": "**BEHOBEN**: Adapterprüfung: Rechtschreibfehler bei `common.nogit`, `@tsconfig/node22`, Release-Skript-Plugin `manual-review` und Dependabot-Workflow für automatisches Zusammenführen",
