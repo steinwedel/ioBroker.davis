@@ -177,7 +177,7 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.19 (2026-08-19)
 * (steinwedel) **FIXED**: Updated ioBroker GitHub Actions to versions that use Node.js 24 instead of deprecated Node.js 20
 
 ### 0.0.18 (2026-08-19)
@@ -192,12 +192,6 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 ### 0.0.15 (2026-08-17)
 * (steinwedel) **ENHANCED**: README.md is now in English (was German-only), adds a link to the Davis WeatherLink Live product page, and the changelog was moved out of README.md into a dedicated CHANGELOG.md
 * (steinwedel) **ENHANCED**: Repository metadata cleanup for the ioBroker latest-repository submission: replaced the placeholder contact address, added GitHub repository topics, added the `iobroker` npm package owner, and fixed an invalid GitHub Actions input on the integration-tests job
-
-### 0.0.14 (2026-08-16)
-* (steinwedel) **NEW**: Added an optional `html.current` dashboard widget with current conditions, a wind rose, and a weather forecast.
-* (steinwedel) **FIXED**: Clear skies were reported as cloudy again in the early morning: the solar model is not trustworthy below ~15° sun elevation (cosine error, horizon, GHI ramp), and holding the last dusk reading or falling back to dew-point humidity both freeze "bewölkt" overnight. Trusted solar estimates are now only taken at ≥ 15°, persisted separately, and used until then; a solar station never uses the humidity heuristic.
-* (steinwedel) **CHANGED**: The wind direction spread indicator now exposes the arc's two boundary angles (windDirLastMin5Min/windDirLastMax5Min) instead of a single opening-angle number, so the actual observed direction range can be shown, not just its size
-* (steinwedel) **FIXED**: Wind direction range tracking no longer includes readings taken during calm wind, since a vane's direction becomes unreliable noise at near-zero speed and could otherwise make the tracked 5-minute range balloon out to a spurious value (e.g. 0°) the wind never actually blew from
 
 Older changes are in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

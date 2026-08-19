@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.18",
+    "version": "0.0.19",
     "news": {
+      "0.0.19": {
+        "en": "**FIXED**: Updated ioBroker GitHub Actions to versions that use Node.js 24 instead of deprecated Node.js 20",
+        "de": "**BEHOBEN**: Die ioBroker GitHub Actions wurden auf Versionen aktualisiert, die Node.js 24 anstelle des veralteten Node.js 20 verwenden.",
+        "ru": "**ИСПРАВЛЕНО**: Обновлены ioBroker GitHub Actions до версий, использующих Node.js 24 вместо устаревшей версии Node.js 20.",
+        "pt": "**CORRIGIDO**: Atualizadas as ações do GitHub do ioBroker para versões que utilizam o Node.js 24 em vez do Node.js 20, que está obsoleto.",
+        "nl": "**OPGELOST**: De ioBroker GitHub Actions zijn bijgewerkt naar versies die Node.js 24 gebruiken in plaats van de verouderde Node.js 20.",
+        "fr": "**CORRIGÉ** : Mise à jour des actions GitHub d’ioBroker vers des versions utilisant Node.js 24 au lieu de la version obsolète Node.js 20.",
+        "it": "**RISOLTO**: Aggiornate le GitHub Actions di ioBroker alle versioni che utilizzano Node.js 24 anziché la versione obsoleta Node.js 20.",
+        "es": "**CORREGIDO**: Se actualizaron las acciones de GitHub de ioBroker a versiones que usan Node.js 24 en lugar de la versión obsoleta Node.js 20.",
+        "pl": "**NAPRAWIONO**: Zaktualizowano akcje GitHub ioBroker do wersji, które korzystają z Node.js 24 zamiast przestarzałego Node.js 20",
+        "uk": "**ВИПРАВЛЕНО**: Оновлено дії ioBroker GitHub до версій, що використовують Node.js 24 замість застарілого Node.js 20.",
+        "zh-cn": "**已修复**：已将 ioBroker GitHub Actions 更新至使用 Node.js 24 而非已弃用的 Node.js 20 版本。"
+      },
       "0.0.18": {
         "en": "**FIXED**: Removed redundant `@types/mocha` from devDependencies (already provided by `@iobroker/testing`)",
         "de": "**BEHOBEN**: Überflüssiges `@types/mocha` aus den devDependencies entfernt (wird bereits von `@iobroker/testing` bereitgestellt)",
