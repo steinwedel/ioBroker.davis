@@ -761,7 +761,7 @@ class Davis extends utils.Adapter {
 
     private async fetchJson<T>(url: string): Promise<T> {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
+        const timeout = this.setTimeout(() => controller.abort(), HTTP_TIMEOUT_MS);
         try {
             const response = await fetch(url, { signal: controller.signal });
             if (!response.ok) {
@@ -769,7 +769,7 @@ class Davis extends utils.Adapter {
             }
             return (await response.json()) as T;
         } finally {
-            clearTimeout(timeout);
+            this.clearTimeout(timeout);
         }
     }
 
@@ -2028,7 +2028,7 @@ class Davis extends utils.Adapter {
                 return;
             }
             try {
-                const devices = await discoverWeatherLinkLive();
+                const devices = await discoverWeatherLinkLive(this);
                 if (devices.length === 0) {
                     this.sendTo(obj.from, obj.command, { error: 'notFound' }, obj.callback);
                     return;

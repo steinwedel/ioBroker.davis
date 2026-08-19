@@ -1,6 +1,6 @@
 {
   "name": "iobroker.davis",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Adapter for Davis WeatherLink Live 6100 weather stations (local API)",
   "author": {
     "name": "steinwedel",
@@ -10,6 +10,7 @@
   "homepage": "https://github.com/steinwedel/ioBroker.davis",
   "license": "MIT",
   "keywords": [
+    "ioBroker",
     "davis",
     "weather",
     "weatherlink"
@@ -19,7 +20,7 @@
     "url": "https://github.com/steinwedel/ioBroker.davis.git"
   },
   "engines": {
-    "node": ">= 20"
+    "node": ">=22"
   },
   "dependencies": {
     "@iobroker/adapter-core": "^3.4.3",
@@ -28,7 +29,8 @@
   "devDependencies": {
     "@alcalzone/release-script": "^5.2.1",
     "@alcalzone/release-script-plugin-iobroker": "^5.2.0",
-    "@alcalzone/release-script-plugin-license": "^5.2.0",
+    "@alcalzone/release-script-plugin-license": "^5.2.2",
+    "@alcalzone/release-script-plugin-manual-review": "^5.2.0",
     "@iobroker/adapter-dev": "^1.5.0",
     "@iobroker/eslint-config": "^2.3.4",
     "@iobroker/testing": "^5.3.0",

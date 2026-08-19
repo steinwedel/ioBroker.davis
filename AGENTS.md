@@ -363,12 +363,12 @@ tests.integration(path.join(__dirname, '..'), {
 
 ## 5. Release & Changelog
 
-### CHANGELOG.md
-- Wird **automatisch** vom `@alcalzone/release-script` verwaltet — Einträge **NUR** unter `## **WORK IN PROGRESS**` schreiben
+### Changelog (README.md)
+- Wird **automatisch** vom `@alcalzone/release-script` verwaltet — Einträge **NUR** unter `### **WORK IN PROGRESS**` in `README.md` schreiben
 - Format: `* (author) **TYPE**: Description`
 - Types: `NEW`, `FIXED`, `ENHANCED`
 - Beim Release verschiebt das Script die WiP-Einträge in eine neue `### X.Y.Z (Datum)`-Sektion und leert den WiP-Bereich
-- Die `README.md` verlinkt nur auf `CHANGELOG.md`
+- Ältere Einträge nach `CHANGELOG_OLD.md` auslagern — **kein** separates `CHANGELOG.md` (Adapter Checker W6017)
 
 ### Release-Prozess
 - `npm run release patch` — Bugfixes (0.1.2 → 0.1.3)

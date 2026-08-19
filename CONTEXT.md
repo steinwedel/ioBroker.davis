@@ -1,12 +1,12 @@
 # CONTEXT
 
-**Current Task**: Complete ioBroker "latest" repository submission requirements for davis.
+**Current Task**: Clear remaining ioBroker adapter-checker warnings and suggestions.
 
 **Key Decisions**:
-- v0.0.15 published to npm via OIDC trusted publishing (validated end-to-end on tag push); `bluefox` added as npm co-owner.
-- README.md translated to English (mandatory) with manufacturer link; changelog moved to its own CHANGELOG.md.
-- GitHub topics set (`iobroker`, `davis`, `weather`, ...); PR opened: ioBroker/ioBroker.repositories#6466 (addToLatest).
+- Changelog lives in README.md; older entries are in CHANGELOG_OLD.md (no CHANGELOG.md).
+- Admin i18n converted to short format (`admin/i18n/{lang}.json`).
+- Added Dependabot plus release-script plugins `license@5.2.2` and `manual-review`.
 
 **Next Steps**:
-- Track/merge ioBroker.repositories PR #6466; then plan forum test thread for stable submission.
-- Redeploy and verify clear-sky behavior around 07:00 and after 08:15.
+- Push so checker re-runs against the new CI (W3052 is stale run #9).
+- W4001 stays until ioBroker.repositories PR #6466 is merged.

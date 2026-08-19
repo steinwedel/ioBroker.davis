@@ -28,10 +28,11 @@ export interface DiscoveredDevice {
 /**
  * Discovers WeatherLink Live devices on the local network via mDNS.
  *
+ * @param adapter - Adapter instance used for setTimeout/clearTimeout
  * @param timeoutMs - How long to listen for responses before returning the results collected so far
  * @returns All discovered devices (deduplicated by address), or an empty array if none responded in time
  */
-export function discoverWeatherLinkLive(timeoutMs = 5000): Promise<DiscoveredDevice[]> {
+export function discoverWeatherLinkLive(adapter: ioBroker.Adapter, timeoutMs = 5000): Promise<DiscoveredDevice[]> {
     return new Promise(resolve => {
         const mdnsInstance = mdns();
         const found = new Map<string, DiscoveredDevice>();
@@ -69,7 +70,7 @@ export function discoverWeatherLinkLive(timeoutMs = 5000): Promise<DiscoveredDev
             mdnsInstance.destroy(() => resolve(Array.from(found.values())));
         };
 
-        const timer = setTimeout(finish, timeoutMs);
+        const timer = adapter.setTimeout(finish, timeoutMs);
 
         mdnsInstance.on('response', onResponse);
         mdnsInstance.on('error', () => {
@@ -82,6 +83,6 @@ export function discoverWeatherLinkLive(timeoutMs = 5000): Promise<DiscoveredDev
         });
 
         // Cleanup safety net in case something goes wrong before the timer fires
-        mdnsInstance.once('close', () => clearTimeout(timer));
+        mdnsInstance.once('close', () => adapter.clearTimeout(timer));
     });
 }

@@ -9,7 +9,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 6,
-            "md": 4
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "port": {
             "type": "number",
@@ -19,7 +21,9 @@
             "default": 80,
             "xs": 12,
             "sm": 6,
-            "md": 2
+            "md": 2,
+            "lg": 2,
+            "xl": 2
         },
         "discoverButton": {
             "type": "sendTo",
@@ -40,7 +44,9 @@
             },
             "xs": 12,
             "sm": 6,
-            "md": 3
+            "md": 3,
+            "lg": 3,
+            "xl": 3
         },
         "pollInterval": {
             "type": "number",
@@ -52,7 +58,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 6,
-            "md": 4
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "units": {
             "type": "select",
@@ -65,7 +73,9 @@
             "default": "metric",
             "xs": 12,
             "sm": 6,
-            "md": 4
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "cloudCoverHeader": {
             "type": "header",
@@ -79,7 +89,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 12,
-            "md": 8
+            "md": 8,
+            "lg": 8,
+            "xl": 8
         },
         "realtimeEnabled": {
             "type": "checkbox",
@@ -88,7 +100,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 6,
-            "md": 4
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "realtimeDuration": {
             "type": "number",
@@ -100,6 +114,8 @@
             "xs": 12,
             "sm": 6,
             "md": 4,
+            "lg": 4,
+            "xl": 4,
             "hidden": "!data.realtimeEnabled"
         },
         "htmlWidgetHeader": {
@@ -114,7 +130,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 12,
-            "md": 8
+            "md": 8,
+            "lg": 8,
+            "xl": 8
         },
         "htmlWidgetEnabled": {
             "type": "checkbox",
@@ -123,7 +141,9 @@
             "newLine": true,
             "xs": 12,
             "sm": 6,
-            "md": 4
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "webBaseUrl": {
             "type": "text",
@@ -133,6 +153,8 @@
             "xs": 12,
             "sm": 12,
             "md": 6,
+            "lg": 6,
+            "xl": 6,
             "hidden": "!data.htmlWidgetEnabled"
         }
     }
