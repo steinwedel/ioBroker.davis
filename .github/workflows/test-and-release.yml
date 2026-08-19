@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: ioBroker/testing-action-check@v1
+      - uses: ioBroker/testing-action-check@v2
         with:
           node-version: '22.x'
           # Uncomment the following line if your adapter cannot be installed using 'npm ci'
@@ -46,7 +46,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: ioBroker/testing-action-adapter@v1
+      - uses: ioBroker/testing-action-adapter@v1.1.2
         with:
           node-version: ${{ matrix.node-version }}
           os: ${{ matrix.os }}
@@ -59,9 +59,10 @@ jobs:
     if: contains(github.event.head_commit.message, '[skip ci]') == false
     runs-on: ubuntu-latest
     steps:
-      - uses: ioBroker/testing-action-adapter@v1
+      - uses: ioBroker/testing-action-adapter@v1.1.2
         with:
           node-version: '24.x'
+          os: ubuntu-latest
           build: true
           integration-test-command: npm run test:integration
 
@@ -74,7 +75,7 @@ jobs:
       id-token: write
       contents: write
     steps:
-      - uses: ioBroker/testing-action-deploy@v1
+      - uses: ioBroker/testing-action-deploy@v1.5.2
         with:
           node-version: '24.x'
           build: true

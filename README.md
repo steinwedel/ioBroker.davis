@@ -178,6 +178,7 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 	### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+* (steinwedel) **FIXED**: Updated ioBroker GitHub Actions to versions that use Node.js 24 instead of deprecated Node.js 20
 
 ### 0.0.18 (2026-08-19)
 * (steinwedel) **FIXED**: Removed redundant `@types/mocha` from devDependencies (already provided by `@iobroker/testing`)
