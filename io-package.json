@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "davis",
-    "version": "0.0.19",
+    "version": "0.0.20",
     "news": {
+      "0.0.20": {
+        "en": "**FIXED**: README object tree now matches the `minMax.*` layout and documents `html.current`, real-time fields, reception/barometer/soil notes, and widget usage\n**FIXED**: Pin ioBroker testing-action-adapter and testing-action-deploy to major `@v1` (adapter checker S3043/S3044)",
+        "de": "**BEHOBEN**: Die README-Objektstruktur entspricht nun dem `minMax.*`-Layout und dokumentiert `html.current`, Echtzeitfelder, Empfangs-/Barometer-/Bodennotizen und die Widget-Nutzung.\n**BEHOBEN**: ioBroker testing-action-adapter und testing-action-deploy auf Hauptversion `@v1` festlegen (Adapterprüfung S3043/S3044)",
+        "ru": "**ИСПРАВЛЕНО**: Структура объекта README теперь соответствует макету `minMax.*` и описывает `html.current`, поля реального времени, заметки о приеме/барометре/почве и использование виджетов.\n**ИСПРАВЛЕНО**: Зафиксировать ioBroker testing-action-adapter и testing-action-deploy на основной версии `@v1` (проверка адаптеров S3043/S3044)",
+        "pt": "**CORRIGIDO**: A árvore de objetos do README agora corresponde ao layout `minMax.*` e documenta `html.current`, campos em tempo real, notas de recepção/barômetro/solo e uso de widgets.\n**CORRIGIDO**: Fixar ioBroker testing-action-adapter e testing-action-deploy à versão principal `@v1` (verificador de adaptador S3043/S3044)",
+        "nl": "**OPGELOST**: De objectstructuur van het README-bestand komt nu overeen met de `minMax.*`-indeling en documenteert `html.current`, realtime-velden, ontvangst-/barometer-/bodemnotities en widgetgebruik.\n**OPGELOST**: ioBroker testing-action-adapter en testing-action-deploy vastzetten aan major `@v1` (adapter checker S3043/S3044)",
+        "fr": "**CORRIGÉ** : L’arborescence des objets README correspond désormais à la mise en page `minMax.*` et documente `html.current`, les champs en temps réel, les notes sur la réception/le baromètre/le sol et l’utilisation des widgets.\n**CORRIGÉ** : Épingler ioBroker testing-action-adapter et testing-action-deploy à la version majeure `@v1` (vérificateur d'adaptateur S3043/S3044)",
+        "it": "**CORRETTO**: L'albero degli oggetti README ora corrisponde al layout `minMax.*` e documenta `html.current`, i campi in tempo reale, le note su ricezione/barometro/suolo e l'utilizzo del widget.\n**RISOLTO**: Blocca ioBroker testing-action-adapter e testing-action-deploy alla versione principale `@v1` (controllo adattatore S3043/S3044)",
+        "es": "**CORREGIDO**: El árbol de objetos README ahora coincide con el diseño `minMax.*` y documenta `html.current`, campos en tiempo real, notas de recepción/barómetro/suelo y uso del widget.\n**CORREGIDO**: Fijar ioBroker testing-action-adapter y testing-action-deploy a la versión principal `@v1` (verificador de adaptadores S3043/S3044)",
+        "pl": "**NAPRAWIONO**: Drzewo obiektów README jest teraz zgodne z układem `minMax.*` i dokumentami `html.current`, polami w czasie rzeczywistym, notatkami dotyczącymi odbioru/barometru/gleby i wykorzystaniem widżetu\n**NAPRAWIONO**: Przypnij ioBroker testing-action-adapter i testing-action-deploy do głównej `@v1` (program sprawdzający adapter S3043/S3044)",
+        "uk": "**ВИПРАВЛЕНО**: Дерево об'єктів README тепер відповідає макету `minMax.*` та документує `html.current`, поля реального часу, нотатки щодо прийому/барометра/ґрунту та використання віджетів.\n**ВИПРАВЛЕНО**: Закріплення ioBroker testing-action-adapter та testing-action-deploy до основної `@v1` (перевірка адаптера S3043/S3044)",
+        "zh-cn": "**已修复**：README 对象树现在与 `minMax.*` 布局匹配，并记录了 `html.current`、实时字段、接收/气压计/土壤注释和小部件使用情况。\n**已修复**：将 ioBroker testing-action-adapter 和 testing-action-deploy 的主版本号锁定为 `@v1`（适配器检查器 S3043/S3044）"
+      },
       "0.0.19": {
         "en": "**FIXED**: Updated ioBroker GitHub Actions to versions that use Node.js 24 instead of deprecated Node.js 20",
         "de": "**BEHOBEN**: Die ioBroker GitHub Actions wurden auf Versionen aktualisiert, die Node.js 24 anstelle des veralteten Node.js 20 verwenden.",

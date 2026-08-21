@@ -23,6 +23,7 @@ Since different WeatherLink Live stations can be equipped with different sensors
 - Automatic device discovery on the local network via mDNS/Bonjour
 - Metric (°C, km/h, hPa, mm) or imperial (°F, mph, inHg, in) units, selectable
 - Estimated cloud cover and a simplified current weather icon, derived from the available sensor data
+- Optional HTML widget (`html.current`) with current conditions and a wind rose, for VIS/Jarvis
 
 ## Requirements
 
@@ -39,6 +40,7 @@ Since different WeatherLink Live stations can be equipped with different sensors
 3. Optionally adjust the **polling interval** (default: 20 seconds, minimum 10 seconds per the Davis API) and the desired **units** (metric/imperial).
 4. Optionally enable **real-time mode** to receive wind and rain data much more frequently.
 5. For cloud cover and weather icon estimation: latitude and longitude must be configured under **Main page → System settings** in ioBroker (not in the adapter configuration itself).
+6. The **HTML widget** is enabled by default (`html.current`). Disable it in the instance settings if unused.
 
 ## Configuration
 
@@ -51,48 +53,74 @@ Since different WeatherLink Live stations can be equipped with different sensors
 | Units | Metric (°C, km/h, hPa, mm) or imperial (°F, mph, inHg, in) |
 | Real-time mode | Enables the UDP broadcast for high-frequency wind/rain data |
 | Real-time broadcast duration | How long an activation is requested; renewed automatically |
+| Enable HTML widget | Writes ready-to-use HTML into `html.current` (enabled by default) |
+| Web instance base URL | Optional; only if VIS/Jarvis cannot resolve relative `/adapter/davis/...` image paths |
 
 ## Object structure
 
 ```
 davis.0
 ├── info
-│   └── connection              Connection status to the WeatherLink Live 6100
+│   └── connection                 Connection status to the WeatherLink Live 6100
 ├── sensors
-│   ├── tx<N>                   One channel per ISS transmitter (outdoor sensor)
-│   │   ├── temperature, temperatureFrostWarning, temperature{Day,Month,Year,Absolute}{Min,Max}[Time]
-│   │   ├── humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time]
-│   │   ├── dewPoint, dewPointText, dewPoint{Day,Month,Year,Absolute}{Min,Max}[Time], wetBulb, windChill
-│   │   ├── heatIndex, heatIndexText, heatIndex{Day,Month,Year,Absolute}{Min,Max}[Time], thwIndex, thswIndex, ...
-│   │   ├── windSpeedLast, windSpeedLast{Day,Month,Year,Absolute}{Min,Max}[Time]
-│   │   ├── windDirLast, windDirLastText, windDirLastMin5Min, windDirLastMax5Min, windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
-│   │   ├── windSpeedHi2Min, windDirHi2Min, windDirHi2MinText, windSpeedHi10Min, windDirHi10Min, windDirHi10MinText
-│   │   ├── rainRateLast, rainRateLastText, rainRateHi, rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
+│   ├── tx<N>                      One channel per ISS transmitter (outdoor sensor)
+│   │   ├── temperature, temperatureFrostWarning
+│   │   ├── humidity
+│   │   ├── dewPoint, dewPointText, wetBulb, windChill
+│   │   ├── heatIndex, heatIndexText, thwIndex, thswIndex
+│   │   ├── windSpeedLast
+│   │   ├── windDirLast, windDirLastText
+│   │   ├── windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
+│   │   ├── windSpeedHi2Min, windDirHi2Min, windDirHi2MinText
+│   │   ├── windSpeedHi10Min, windDirHi10Min, windDirHi10MinText
+│   │   ├── rainRateLast, rainRateLastText, rainRateHi
+│   │   ├── rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
 │   │   ├── rainfallDaily, rainfallMonthly, rainfallYear
 │   │   ├── rainStorm, rainStormStartAt, rainStormLast, rainStormLastStartAt, rainStormLastEndAt
-│   │   ├── solarRad, solarRad{Day,Month,Year,Absolute}{Min,Max}[Time]                    (only if a solar sensor is present)
-│   │   ├── uvIndex, uvIndexText, uvIndex{Day,Month,Year,Absolute}{Min,Max}[Time]         (only if a solar sensor is present)
+│   │   ├── solarRad                                           (only if a solar sensor is present)
+│   │   ├── uvIndex, uvIndexText                               (only if a solar sensor is present)
 │   │   └── lowBattery, receptionState
-│   ├── soilLeaf<N>              One channel per soil/leaf moisture transmitter (if present)
+│   ├── soilLeaf<N>                One channel per soil/leaf moisture transmitter (if present)
 │   │   └── soilTemp1-4, soilMoisture1-4, leafWetness1-2, lowBattery
-│   ├── barometer                Only if a barometer sensor is present
-│   │   └── seaLevel, seaLevel{Day,Month,Year,Absolute}{Min,Max}[Time], absolute, trend
-│   └── inside                   Only if an indoor sensor is present
-│       └── temperature, temperature{Day,Month,Year,Absolute}{Min,Max}[Time], humidity, humidity{Day,Month,Year,Absolute}{Min,Max}[Time], dewPoint, heatIndex
-└── calculated
-    ├── cloudCover                Estimated cloud cover in % (0-100)
-    ├── cloudCoverModel           Which model was used (see below)
-    ├── weatherCode               Numeric weather code (see table below)
-    ├── weatherState              Human-readable weather state identifier
-    ├── weatherIcon               Path to the matching weather icon (SVG)
-    └── evapotranspiration        Estimated reference evapotranspiration (ETo) for the current day, in mm/day
+│   ├── barometer                  Only if a barometer sensor is present
+│   │   └── seaLevel, absolute, trend
+│   └── inside                     Only if an indoor sensor is present
+│       └── temperature, humidity, dewPoint, heatIndex
+├── minMax                         Day/month/year/absolute (and 5-min wind-direction) extremes
+│   ├── day|month|year|absolute
+│   │   ├── tx<N>
+│   │   │   └── <field>Min, <field>MinTime, <field>Max, <field>MaxTime
+│   │   ├── barometer
+│   │   │   └── seaLevelMin, seaLevelMinTime, seaLevelMax, seaLevelMaxTime
+│   │   └── inside
+│   │       └── temperature*/humidity* Min/Max[+Time]
+│   └── last5Min
+│       └── tx<N>
+│           └── windDirLastMin, windDirLastMax
+├── calculated
+│   ├── cloudCover                 Estimated cloud cover in % (0-100)
+│   ├── cloudCoverModel            Which model was used (see below)
+│   ├── weatherCode                Numeric weather code (see table below)
+│   ├── weatherState               Human-readable weather state identifier
+│   ├── weatherIcon                Path to the matching weather icon (SVG)
+│   ├── evapotranspiration         Estimated reference evapotranspiration (ETo) for the current day, in mm/day
+│   ├── clearSkyReference          Learned clear-sky solar reference (internal JSON)
+│   └── lastTrustedCloudCover      Last trustworthy solar cloud-cover value (internal)
+└── html                           Only if the HTML widget is enabled
+    └── current                    Ready-to-use HTML for a VIS/Jarvis widget
 ```
 
-**Important:** A channel/state is only created if the station actually reports the corresponding sensor. A station without a solar radiation sensor, for example, gets no `solarRad`/`uvIndex` states, and without a barometer no `sensors.barometer` channel is created. Likewise, the `calculated.*` states are only created if enough sensor data is available for at least one of the calculation methods described below.
+**Important:** A live sensor channel/state is only created if the station actually reports the corresponding sensor. A station without a solar radiation sensor, for example, gets no `solarRad`/`uvIndex` states, and without a barometer no `sensors.barometer` channel is created. `calculated.cloudCover` / `weather*` / `evapotranspiration` are only created if enough data is available. `calculated.clearSkyReference` and `calculated.lastTrustedCloudCover` are always created (internal persistence for the solar model).
+
+`receptionState` is the ISS radio link status: `0` = Synched & Tracking, `1` = Synched, `2` = Scanning.
+
+`sensors.barometer.trend` is the 3-hour sea-level pressure change (same unit as the barometer).
+
+Soil moisture is stored in centibar (`cb`) as reported by Davis (higher = drier). Leaf wetness is a raw station count, not a percentage.
 
 `windDirLastText`, `windDirAvg10MinText`, `windDirHi2MinText` and `windDirHi10MinText` contain the respective wind direction as a 16-point compass abbreviation (e.g. `N`, `NNE`, `E`, `SSW`, …), derived from `windDirLast`/`windDirAvg10Min`/`windDirHi2Min`/`windDirHi10Min` in degrees.
 
-`windDirLastMin5Min` and `windDirLastMax5Min` contain the two boundary angles of the smallest arc (in degrees) that encloses all wind direction readings from the last 5 minutes — i.e. the "spread" of the wind direction during that period. Going clockwise from `windDirLastMin5Min` to `windDirLastMax5Min` (wrapping across 360°/0° if `windDirLastMax5Min` is a smaller value than `windDirLastMin5Min`) covers all observed directions. The values are recalculated on every poll from a continuously maintained sliding 5-minute window of the most recent wind direction readings (not only after 5 minutes have elapsed — the very first reading already yields `windDirLastMin5Min = windDirLastMax5Min` = the current value, and the arc then grows continuously with each new reading until the 5-minute window is fully populated). For example: readings of 350°, 0° and 10° within the last 5 minutes yield `windDirLastMin5Min = 350` and `windDirLastMax5Min = 10` (a 20° arc across the 0°/360° boundary, not the much larger 340° span a naive min/max calculation would produce). This window is kept purely in memory and starts over after an adapter restart — unlike the day/month/year/absolute min/max values (see below), this is not a problem for a pure 5-minute indicator.
+`minMax.last5Min.tx<N>.windDirLastMin` and `minMax.last5Min.tx<N>.windDirLastMax` contain the two boundary angles of the smallest arc (in degrees) that encloses all wind direction readings from the last 5 minutes — i.e. the "spread" of the wind direction during that period. Going clockwise from `windDirLastMin` to `windDirLastMax` (wrapping across 360°/0° if `windDirLastMax` is a smaller value than `windDirLastMin`) covers all observed directions. The values are recalculated on every poll from a continuously maintained sliding 5-minute window of the most recent wind direction readings (not only after 5 minutes have elapsed — the very first reading already yields `windDirLastMin = windDirLastMax` = the current value, and the arc then grows continuously with each new reading until the 5-minute window is fully populated). For example: readings of 350°, 0° and 10° within the last 5 minutes yield `windDirLastMin = 350` and `windDirLastMax = 10` (a 20° arc across the 0°/360° boundary, not the much larger 340° span a naive min/max calculation would produce). This window is kept purely in memory and starts over after an adapter restart — unlike the day/month/year/absolute min/max values (see below), this is not a problem for a pure 5-minute indicator.
 
 `uvIndexText` contains the UV risk category according to the WHO/WMO scale (`Low`, `Moderate`, `High`, `Very high`, `Extreme`), derived from `uvIndex`.
 
@@ -106,14 +134,26 @@ davis.0
 
 `rainStormStartAt`, `rainStormLastStartAt` and `rainStormLastEndAt` contain the respective timestamp as an ISO 8601 timestamp (e.g. `2026-08-02T00:15:00.000Z`), converted from the UNIX timestamp reported by the station.
 
-## Minimum/maximum values (`<field>{Day,Month,Year,Absolute}{Min,Max}` / `...Time`)
+## Minimum/maximum values (`minMax.<period>.<sensor>.<field>{Min,Max}` / `...Time`)
 
-For the actually measured sensor values (temperature, humidity, dew point, heat index, wind speed, solar radiation, UV index, air pressure — both outdoor and indoor), the minimum and maximum values for the current day, the current month, the current year and since the adapter was installed ("Absolute") are automatically tracked in addition to the current value. For each of these eight combinations (4 periods × min/max) there are two states:
+Extremes are **not** stored next to the live sensor readings. They live under a dedicated `minMax` tree, grouped first by period, then by the originating sensor channel:
 
-- `<field>DayMin`, `<field>MonthMin`, `<field>YearMin`, `<field>AbsoluteMin` (and analogously `...Max`) — the respective extreme value, in the currently configured display unit.
-- `<field>DayMinTime`, `<field>MonthMinTime`, `<field>YearMinTime`, `<field>AbsoluteMinTime` (and analogously `...MaxTime`) — the time at which this extreme value was measured, as an ISO 8601 timestamp.
+```
+minMax.day.tx1.temperatureMax
+minMax.month.tx1.temperatureMax
+minMax.year.tx1.temperatureMax
+minMax.absolute.tx1.temperatureMax
+minMax.last5Min.tx1.windDirLastMin   (wind-direction arc only; no ...Time states)
+```
 
-Example: `sensors.tx1.temperatureDayMax` = `28.4` and `sensors.tx1.temperatureDayMaxTime` = `2026-08-02T15:42:00.000Z` means: the highest temperature measured today was 28.4 °C, measured at 15:42 UTC.
+Tracked live fields: outdoor temperature, humidity, dew point, heat index, last wind speed, solar radiation, UV index; barometer sea-level pressure; indoor temperature and humidity.
+
+For each of the four calendar periods (day / month / year / absolute) there are two states per extreme:
+
+- `<field>Min` / `<field>Max` — the extreme value, in the currently configured display unit.
+- `<field>MinTime` / `<field>MaxTime` — when that extreme was measured, as an ISO 8601 timestamp.
+
+Example: `minMax.day.tx1.temperatureMax` = `28.4` and `minMax.day.tx1.temperatureMaxTime` = `2026-08-02T15:42:00.000Z` means: the highest temperature measured today was 28.4 °C, measured at 15:42 UTC.
 
 The day/month/year buckets reset automatically at the respective calendar change (local time of the system running ioBroker); the "Absolute" value is never reset and is preserved across adapter restarts (the values are reconstructed from the existing states). **Note:** Since the values are stored in the currently configured display unit, later changing the unit (metric/imperial) in the adapter settings means already-recorded extreme values continue to be shown in the unit that was valid at the time they were measured.
 
@@ -166,18 +206,32 @@ The WeatherLink Live 6100 does not support a lightning sensor (unlike the older 
 
 The WeatherLink Live 6100 always reports all values in imperial units (°F, mph, inHg). When "Metric" is enabled, the adapter converts temperature, wind speed and air pressure before storing them. Rain values are converted from raw tip counts into a physical rainfall amount (mm or inches) based on the tip size (`rain_size`) reported by the device.
 
+## Real-time UDP updates
+
+When real-time mode is enabled, the station broadcasts a subset of ISS fields about every 2.5 seconds: `windSpeedLast`, `windDirLast`, `rainRateLast`, `rainfallDaily`, `rainfallMonthly`, `rainfallYear`, `windSpeedHi10Min`. All other states update only on the HTTP poll interval. Companion text states (`windDirLastText`, `rainRateLastText`) and the 5-minute wind-direction arc are updated together with those broadcasts.
+
+## HTML widget (`html.current`)
+
+If enabled (default), the adapter writes a self-contained HTML snippet (current conditions, weather icon, wind rose with the 5-minute direction arc) to `html.current`. Bind that state in a VIS or Jarvis HTML widget.
+
+Image paths are `/adapter/davis/img/weathericons/...`. That works when the page is served by the ioBroker `web` instance. If icons stay broken (typical for some Jarvis setups), set **Web instance base URL** to that instance, e.g. `http://192.168.1.10:8082`. Rebuilds are throttled so the ~2.5 s real-time stream does not rewrite the HTML on every packet.
+
 ## Known limitations
 
 - The cloud cover and weather icon estimates are **approximations**, not measurements. The solar-radiation-based model typically achieves ±10-15% accuracy during daylight; the dew-point heuristic is considerably rougher and should be understood as a trend indicator rather than a precise value.
 - Without a configured location (latitude/longitude) in the ioBroker system settings, only the dew-point heuristic works, not the more accurate solar-radiation-based model.
 - Automatic device discovery only works if UDP multicast is not blocked on the local network.
+- Real-time mode also needs UDP (broadcast port 22222) from the WeatherLink Live 6100 to the ioBroker host.
+- Relative widget icon paths fail if the VIS/Jarvis host is not the ioBroker web instance — set the optional base URL then.
 
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.20 (2026-08-21)
+* (steinwedel) **FIXED**: README object tree now matches the `minMax.*` layout and documents `html.current`, real-time fields, reception/barometer/soil notes, and widget usage
+* (steinwedel) **FIXED**: Pin ioBroker testing-action-adapter and testing-action-deploy to major `@v1` (adapter checker S3043/S3044)
 
 ### 0.0.19 (2026-08-19)
 * (steinwedel) **FIXED**: Updated ioBroker GitHub Actions to versions that use Node.js 24 instead of deprecated Node.js 20
@@ -190,10 +244,6 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 
 ### 0.0.16 (2026-08-19)
 * (steinwedel) **FIXED**: Adapter checker findings: Node.js >=22, ioBroker keyword, admin >=7.6.20, news for unpublished versions removed, adapter timers instead of Node setTimeout, missing admin i18n files, jsonConfig sizes/translation keys, README changelog format, and common.noGit
-
-### 0.0.15 (2026-08-17)
-* (steinwedel) **ENHANCED**: README.md is now in English (was German-only), adds a link to the Davis WeatherLink Live product page, and the changelog was moved out of README.md into a dedicated CHANGELOG.md
-* (steinwedel) **ENHANCED**: Repository metadata cleanup for the ioBroker latest-repository submission: replaced the placeholder contact address, added GitHub repository topics, added the `iobroker` npm package owner, and fixed an invalid GitHub Actions input on the integration-tests job
 
 Older changes are in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

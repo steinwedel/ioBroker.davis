@@ -44,6 +44,10 @@
 
 ### 0.0.1
 * (steinwedel) initial release
+## 0.0.15 (2026-08-17)
+* (steinwedel) **ENHANCED**: README.md is now in English (was German-only), adds a link to the Davis WeatherLink Live product page, and the changelog was moved out of README.md into a dedicated CHANGELOG.md
+* (steinwedel) **ENHANCED**: Repository metadata cleanup for the ioBroker latest-repository submission: replaced the placeholder contact address, added GitHub repository topics, added the `iobroker` npm package owner, and fixed an invalid GitHub Actions input on the integration-tests job
+
 ## 0.0.14 (2026-08-16)
 * (steinwedel) **NEW**: Added an optional `html.current` dashboard widget with current conditions, a wind rose, and a weather forecast.
 * (steinwedel) **FIXED**: Clear skies were reported as cloudy again in the early morning: the solar model is not trustworthy below ~15° sun elevation (cosine error, horizon, GHI ramp), and holding the last dusk reading or falling back to dew-point humidity both freeze "bewölkt" overnight. Trusted solar estimates are now only taken at ≥ 15°, persisted separately, and used until then; a solar station never uses the humidity heuristic.
