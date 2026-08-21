@@ -231,6 +231,8 @@ Image paths are `/adapter/davis/img/weathericons/...`. That works when the page 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 0.0.21 (2026-08-21)
 * (steinwedel) **NEW**: Boolean `sensors.tx<N>.raining` (`true` while rain rate > 0) for irrigation rain-sensor bindings
 
