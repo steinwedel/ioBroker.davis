@@ -229,6 +229,8 @@ Image paths are `/adapter/davis/img/weathericons/...`. That works when the page 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
 ### 0.0.20 (2026-08-21)
 * (steinwedel) **FIXED**: README object tree now matches the `minMax.*` layout and documents `html.current`, real-time fields, reception/barometer/soil notes, and widget usage
 * (steinwedel) **FIXED**: Pin ioBroker testing-action-adapter and testing-action-deploy to major `@v1` (adapter checker S3043/S3044)
