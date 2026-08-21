@@ -69,6 +69,8 @@ interface FieldDefinition<T> {
     uvRiskText?: boolean;
     /** Marks a rain rate field for which a companion `<id>Text` intensity-category state (e.g. "Mäßig") should also be created */
     rainIntensityText?: boolean;
+    /** Marks a rain rate field for which a companion `raining` boolean (`true` while the rate is > 0) should also be created */
+    raining?: boolean;
     /** Marks the outside temperature field for which a companion `<id>FrostWarning` boolean state should also be created */
     frostWarning?: boolean;
     /** Marks a heat index-like field for which a companion `<id>Text` heat-risk-category state (e.g. "Vorsicht") should also be created */
@@ -233,6 +235,7 @@ const ISS_FIELDS: FieldDefinition<IssCondition>[] = [
         isRain: true,
         isRainRate: true,
         rainIntensityText: true,
+        raining: true,
     },
     {
         key: 'rain_rate_hi',
@@ -1499,6 +1502,22 @@ class Davis extends utils.Adapter {
                 this.knownStates.add(rainIntensityStateId);
             }
 
+            const rainingStateId = `${channelId}.raining`;
+            if (field.raining && !this.knownStates.has(rainingStateId)) {
+                await this.setObjectNotExistsAsync(rainingStateId, {
+                    type: 'state',
+                    common: {
+                        name: 'Raining',
+                        type: 'boolean',
+                        role: 'sensor.rain',
+                        read: true,
+                        write: false,
+                    },
+                    native: {},
+                });
+                this.knownStates.add(rainingStateId);
+            }
+
             const frostWarningStateId = `${stateId}FrostWarning`;
             if (field.frostWarning && !this.knownStates.has(frostWarningStateId)) {
                 await this.setObjectNotExistsAsync(frostWarningStateId, {
@@ -1589,6 +1608,10 @@ class Davis extends utils.Adapter {
                     val: getRainIntensityLevelLabel(rateMmh),
                     ack: true,
                 });
+            }
+            if (field.raining) {
+                const rateMmh = convertRainCount(Number(value), rainSize, 'metric');
+                await this.setStateAsync(rainingStateId, { val: rateMmh > 0, ack: true });
             }
             if (field.frostWarning) {
                 // Frost threshold is calibrated in °C, independent of the user's display unit setting.
@@ -2007,6 +2030,14 @@ class Davis extends utils.Adapter {
                 this.setStateAsync(`${channelId}.${field.id}`, { val, ack: true }).catch((error: Error) => {
                     this.log.debug(`Could not update ${channelId}.${field.id}: ${error.message}`);
                 });
+                if (field.id === 'rainRateLast') {
+                    const rateMmh = convertRainCount(Number(value), record.rain_size, 'metric');
+                    this.setStateAsync(`${channelId}.raining`, { val: rateMmh > 0, ack: true }).catch(
+                        (error: Error) => {
+                            this.log.debug(`Could not update ${channelId}.raining: ${error.message}`);
+                        },
+                    );
+                }
             }
         }
         this.scheduleHtmlRebuild();

@@ -73,7 +73,7 @@ davis.0
 │   │   ├── windSpeedAvg10Min, windDirAvg10Min, windDirAvg10MinText
 │   │   ├── windSpeedHi2Min, windDirHi2Min, windDirHi2MinText
 │   │   ├── windSpeedHi10Min, windDirHi10Min, windDirHi10MinText
-│   │   ├── rainRateLast, rainRateLastText, rainRateHi
+│   │   ├── rainRateLast, rainRateLastText, raining, rainRateHi
 │   │   ├── rainfall15Min, rainRateHi15Min, rainfall60Min, rainfall24Hr
 │   │   ├── rainfallDaily, rainfallMonthly, rainfallYear
 │   │   ├── rainStorm, rainStormStartAt, rainStormLast, rainStormLastStartAt, rainStormLastEndAt
@@ -125,6 +125,8 @@ Soil moisture is stored in centibar (`cb`) as reported by Davis (higher = drier)
 `uvIndexText` contains the UV risk category according to the WHO/WMO scale (`Low`, `Moderate`, `High`, `Very high`, `Extreme`), derived from `uvIndex`.
 
 `rainRateLastText` contains the precipitation intensity according to the WMO/NWS scale (`No precipitation`, `Light`, `Moderate`, `Heavy`, `Very heavy`), derived from `rainRateLast`.
+
+`raining` is `true` while `rainRateLast` is greater than 0. Use this boolean (role `sensor.rain`) as an irrigation rain sensor — not `rainStorm`, which is a rainfall *amount*.
 
 `heatIndexText` contains the heat warning category according to the NWS heat index scale (`None`, `Caution`, `Extreme caution`, `Danger`, `Extreme danger`), derived from `heatIndex`.
 
@@ -208,7 +210,7 @@ The WeatherLink Live 6100 always reports all values in imperial units (°F, mph,
 
 ## Real-time UDP updates
 
-When real-time mode is enabled, the station broadcasts a subset of ISS fields about every 2.5 seconds: `windSpeedLast`, `windDirLast`, `rainRateLast`, `rainfallDaily`, `rainfallMonthly`, `rainfallYear`, `windSpeedHi10Min`. All other states update only on the HTTP poll interval. Companion text states (`windDirLastText`, `rainRateLastText`) and the 5-minute wind-direction arc are updated together with those broadcasts.
+When real-time mode is enabled, the station broadcasts a subset of ISS fields about every 2.5 seconds: `windSpeedLast`, `windDirLast`, `rainRateLast`, `rainfallDaily`, `rainfallMonthly`, `rainfallYear`, `windSpeedHi10Min`. `raining` is updated with `rainRateLast`. All other states update only on the HTTP poll interval. Companion text states (`windDirLastText`, `rainRateLastText`) and the 5-minute wind-direction arc are updated together with those broadcasts.
 
 ## HTML widget (`html.current`)
 
@@ -229,7 +231,8 @@ Image paths are `/adapter/davis/img/weathericons/...`. That works when the page 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.21 (2026-08-21)
+* (steinwedel) **NEW**: Boolean `sensors.tx<N>.raining` (`true` while rain rate > 0) for irrigation rain-sensor bindings
 
 ### 0.0.20 (2026-08-21)
 * (steinwedel) **FIXED**: README object tree now matches the `minMax.*` layout and documents `html.current`, real-time fields, reception/barometer/soil notes, and widget usage
@@ -243,9 +246,6 @@ Image paths are `/adapter/davis/img/weathericons/...`. That works when the page 
 
 ### 0.0.17 (2026-08-19)
 * (steinwedel) **FIXED**: Adapter checker: `common.nogit` spelling, `@tsconfig/node22`, release-script `manual-review` plugin, and Dependabot auto-merge workflow
-
-### 0.0.16 (2026-08-19)
-* (steinwedel) **FIXED**: Adapter checker findings: Node.js >=22, ioBroker keyword, admin >=7.6.20, news for unpublished versions removed, adapter timers instead of Node setTimeout, missing admin i18n files, jsonConfig sizes/translation keys, README changelog format, and common.noGit
 
 Older changes are in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

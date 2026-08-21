@@ -44,6 +44,9 @@
 
 ### 0.0.1
 * (steinwedel) initial release
+## 0.0.16 (2026-08-19)
+* (steinwedel) **FIXED**: Adapter checker findings: Node.js >=22, ioBroker keyword, admin >=7.6.20, news for unpublished versions removed, adapter timers instead of Node setTimeout, missing admin i18n files, jsonConfig sizes/translation keys, README changelog format, and common.noGit
+
 ## 0.0.15 (2026-08-17)
 * (steinwedel) **ENHANCED**: README.md is now in English (was German-only), adds a link to the Davis WeatherLink Live product page, and the changelog was moved out of README.md into a dedicated CHANGELOG.md
 * (steinwedel) **ENHANCED**: Repository metadata cleanup for the ioBroker latest-repository submission: replaced the placeholder contact address, added GitHub repository topics, added the `iobroker` npm package owner, and fixed an invalid GitHub Actions input on the integration-tests job
